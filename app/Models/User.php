@@ -59,4 +59,15 @@ class User extends Authenticatable
     {
         return $this->hasOne(RenterStore::class);
     }
+
+    public function renter()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // NEW: Relationship to the Renter's Store (via the Renter User)
+    public function renterStore()
+    {
+        return $this->renter->store();
+    }
 }

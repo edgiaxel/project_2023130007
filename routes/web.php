@@ -48,7 +48,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::view('/home', 'admin.dashboard')->name('dashboard'); // Dedicated dashboard route
         Route::view('/users', 'admin.manage_users')->name('users');
-        Route::view('/costumes', 'admin.manage_costumes')->name('costumes');
+        Route::view('/php artisan migrate:fresh --seed', 'admin.manage_costumes')->name('costumes');
         Route::view('/transactions', 'admin.monitor_transactions')->name('transactions');
     });
 

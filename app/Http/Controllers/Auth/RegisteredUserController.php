@@ -31,7 +31,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -40,6 +40,16 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        // FIX REQUIRED: Assign the default role based on your registration form or default logic.
+        $role = $request->role_type ?? 'user'; // Defaults to 'user' if radio button value is missing.
+
+        // Ensure role is valid (prevents users from registering as 'admin')
+        if ($role === 'renter') {
+            $user->assignRole('renter');
+        } else {
+            $user->assignRole('user');
+        }
 
         event(new Registered($user));
 

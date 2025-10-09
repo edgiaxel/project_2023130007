@@ -2,7 +2,7 @@
     <div class="flex flex-col items-center justify-center p-6 text-center text-white space-y-2"
         style="background-color: #1a0046; border-radius: 0.5rem 0.5rem 0 0;">
         <h1 class="text-3xl font-extrabold text-indigo-400">Welcome back, Traveler!</h1>
-        <p class="text-sm text-gray-300">Log in to manage your cosmic journey with **Starium Rental**.</p>
+        <p class="text-sm text-gray-300">Log in to manage your cosmic journey with Starium Rental.</p>
     </div>
 
     <div class="p-6 bg-gray-800 shadow-xl sm:rounded-lg">
@@ -36,9 +36,9 @@
 
             <div class="flex items-center justify-between mt-6">
                 @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-400 hover:text-white" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
+                    <a class="underline text-sm text-gray-400 hover:text-white" href="{{ route('password.request') }}">
+                        {{ __('Forgot your password?') }}
+                    </a>
                 @endif
 
                 <x-primary-button class="bg-indigo-600 hover:bg-indigo-700">
