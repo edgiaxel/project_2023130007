@@ -1,10 +1,17 @@
 @php
     use App\Models\Costume;
     use Illuminate\Support\Facades\Route;
-    
+
+    $DISCOUNT_RATE = 0.15;
+
     $costumeId = Route::current()->parameter('id');
 
     $costume = Costume::with('renter.store')->find($costumeId);
+
+    $costume->is_on_sale = true;
+    $costume->original_price = $costume->price_per_day;
+    $costume->discounted_price = $costume->original_price * (1 - $DISCOUNT_RATE);
+
     if (!$costume) {
         $costume = (object) [
             'name' => 'Costume Not Found',
@@ -13,7 +20,10 @@
             'condition' => 'N/A',
             'price_per_day' => 0,
             'stock' => 0,
-            'tags' => ['Error']
+            'tags' => ['Error'],
+            'is_on_sale' => false,
+            'discounted_price' => 0,
+            'original_price' => 0,
         ];
     }
 
@@ -46,24 +56,34 @@
                     <div
                         class="bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 text-2xl font-bold overflow-hidden">
 
-                        <img src="{{ $costumeImagePath }}" alt="{{ $costumeName }} Costume"
-                            class="h-full object-cover" onerror="this.onerror=null; this.src='{{ asset('default_images/default_costume.png') }}';">
+                        <img src="{{ $costumeImagePath }}" alt="{{ $costumeName }} Costume" class="h-full object-cover"
+                            onerror="this.onerror=null; this.src='{{ asset('default_images/default_costume.png') }}';">
 
                     </div>
                 </div>
 
                 {{-- Details and Order Box --}}
                 <div class="lg:col-span-1 text-gray-200">
-                    <h1 class="text-3xl font-extrabold text-indigo-400">{{ $costumeName }}</h1>
-                    <p class="text-xl mt-2">Series : {{ $costume->series }}</p>
-                    <p class="text-lg mt-1">Size : {{ $costume->size }}</p>
-                    <p class="text-lg">Condition : {{ $costume->condition }}</p>
+                    <h2 class="text-4xl font-bold text-green-400 mt-4 flex flex-col">
+                        @if ($costume->is_on_sale)
+                            <span class="text-lg font-semibold text-gray-500 line-through">
+                                Rp {{ number_format($costume->original_price, 0, ',', '.') }} / Day
+                            </span>
+                        @endif
+                        <span class="text-4xl font-extrabold text-indigo-400">
+                            Rp {{ number_format($costume->discounted_price, 0, ',', '.') }} <span
+                                class="text-xl text-gray-400">/ Day</span>
+                        </span>
+                    </h2>
 
-                    <h2 class="text-4xl font-bold text-green-400 mt-4">
-                        Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} <span
-                            class="text-xl text-gray-400">/ Day</span></h2>
+                    <div class="mt-6 p-4 bg-gray-700 rounded-lg border-l-4 border-pink-500 relative">
+                        @if ($costume->is_on_sale)
+                            <span
+                                class="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
+                                FLASH SALE!
+                            </span>
+                        @endif
 
-                    <div class="mt-6 p-4 bg-gray-700 rounded-lg border-l-4 border-pink-500">
                         <p class="text-sm">Renter: <a
                                 href="{{ route('public.store', ['user_id' => $costume->user_id ?? 0]) }}"
                                 class="text-pink-400 hover:underline">{{ $renterStoreName }}</a>
@@ -74,7 +94,6 @@
                     </div>
 
                     <div class="mt-6 space-y-3">
-                        {{-- Check Stock and Display Button/Message --}}
                         @if ($costume->stock > 0)
                             <p class="text-sm text-green-400 font-bold">
                                 Stock Available: {{ $costume->stock }} units!

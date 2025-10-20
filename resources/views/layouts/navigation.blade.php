@@ -26,7 +26,7 @@
                         {{ __('Cosmic Catalog') }}
                     </x-nav-link>
 
-                    {{-- NEW ANCHOR LINKS (Only visible if not authenticated or not in dashboard) --}}
+                    {{-- NEW ANCHOR LINKS --}}
                     <x-nav-link href="{{ route('catalog') }}#sale-banner" class="text-yellow-300 hover:text-white">
                         {{ __('Flash Sale') }}
                     </x-nav-link>
@@ -35,6 +35,9 @@
                     </x-nav-link>
                     <x-nav-link href="{{ route('catalog') }}#about" class="text-pink-300 hover:text-white">
                         {{ __('About Starium') }}
+                    </x-nav-link>
+                    <x-nav-link href="#" class="text-pink-300 hover:text-white">
+                        {{ __('|') }}
                     </x-nav-link>
 
                     {{-- Auth Links --}}
@@ -48,10 +51,6 @@
                             <x-nav-link :href="route('renter.dashboard')" :active="request()->routeIs('renter.dashboard')"
                                 class="text-pink-300 hover:text-white">
                                 {{ __('Renter Panel') }}
-                            </x-nav-link>
-                            <x-nav-link :href="route('renter.orders')" :active="request()->routeIs('renter.orders')"
-                                class="text-pink-300 hover:text-white">
-                                {{ __('Orders') }}
                             </x-nav-link>
                         @elseif ($isUser)
                             <x-nav-link :href="route('user.orders')" :active="request()->routeIs('user.orders')"
@@ -145,9 +144,6 @@
                 @elseif ($isRenter)
                     <x-responsive-nav-link :href="route('renter.dashboard')" :active="request()->routeIs('renter.dashboard')">
                         {{ __('Renter Panel') }}
-                    </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('renter.orders')" :active="request()->routeIs('renter.orders')">
-                        {{ __('Orders') }}
                     </x-responsive-nav-link>
                 @elseif ($isUser)
                     <x-responsive-nav-link :href="route('user.orders')" :active="request()->routeIs('user.orders')">

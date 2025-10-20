@@ -71,18 +71,6 @@
                     </form>
                 </div>
             </div>
-            
-            {{-- 2. RENTER STORE SETUP --}}
-            @if ($user->hasRole('renter'))
-                <div class="p-4 sm:p-8 bg-gray-800 shadow sm:rounded-lg border-t-4 border-pink-500">
-                    <div class="max-w-xl">
-                         <h2 class="text-xl font-medium text-pink-400 border-b border-pink-700 pb-2 mb-4">
-                             {{ __('Renter Shop & Store Details (Admin Edit)') }}
-                         </h2>
-                         @include('profile.partials.renter-store-form', ['user' => $user])
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 </x-app-layout>
