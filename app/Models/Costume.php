@@ -5,11 +5,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // <-- ADD THIS
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Costume extends Model
 {
-    use HasFactory, SoftDeletes; // <-- USE SOFTDELETES
+    use HasFactory, SoftDeletes; 
 
     protected $fillable = [
         'user_id',
@@ -24,15 +24,18 @@ class Costume extends Model
         'tags'
     ];
 
-    // Cast the 'tags' column to an array so Laravel handles JSON encoding/decoding
     protected $casts = [
         'tags' => 'array',
         'is_approved' => 'boolean',
     ];
 
-    // Relationship to the Renter
     public function renter()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+    
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

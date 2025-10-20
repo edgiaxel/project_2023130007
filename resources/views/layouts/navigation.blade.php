@@ -11,9 +11,7 @@
     style="background-image: radial-gradient(circle at center, rgba(30, 0, 70, 0.9) 0%, rgba(10, 0, 30, 1) 100%);">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-            {{-- Left Section --}}
             <div class="flex">
-                {{-- Logo --}}
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('catalog') }}"
                         class="text-2xl font-extrabold text-white tracking-widest hover:text-indigo-400 transition duration-300">
@@ -23,12 +21,23 @@
 
                 {{-- Desktop Links --}}
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    {{-- Catalog is visible to everyone --}}
                     <x-nav-link :href="route('catalog')" :active="request()->routeIs('catalog')"
                         class="text-indigo-300 hover:text-white">
                         {{ __('Cosmic Catalog') }}
                     </x-nav-link>
 
+                    {{-- NEW ANCHOR LINKS (Only visible if not authenticated or not in dashboard) --}}
+                    <x-nav-link href="{{ route('catalog') }}#sale-banner" class="text-yellow-300 hover:text-white">
+                        {{ __('Flash Sale') }}
+                    </x-nav-link>
+                    <x-nav-link href="{{ route('catalog') }}#catalog" class="text-indigo-300 hover:text-white">
+                        {{ __('Collections') }}
+                    </x-nav-link>
+                    <x-nav-link href="{{ route('catalog') }}#about" class="text-pink-300 hover:text-white">
+                        {{ __('About Starium') }}
+                    </x-nav-link>
+
+                    {{-- Auth Links --}}
                     @auth
                         @if ($isAdmin)
                             <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')"
@@ -74,15 +83,16 @@
                         <x-slot name="trigger">
                             <button
                                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-200 hover:text-white focus:outline-none transition ease-in-out duration-150">
+                                @php
+                                    $profilePicUrl = Auth::user()->profile_picture
+                                        ? asset('storage/' . Auth::user()->profile_picture)
+                                        : asset('default_images/default_avatar.png');
+                                @endphp
+
+                                <img src="{{ $profilePicUrl }}" alt="{{ Auth::user()->name }} Avatar"
+                                    class="h-6 w-6 rounded-full object-cover mr-2 border border-indigo-400"
+                                    onerror="this.onerror=null; this.src='{{ asset('default_images/default_avatar.png') }}';">
                                 <div>{{ Auth::user()->name }}</div>
-                                <div class="ms-1">
-                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </div>
                             </button>
                         </x-slot>
 
@@ -162,9 +172,21 @@
         {{-- Mobile Profile + Logout --}}
         @auth
             <div class="pt-4 pb-1 border-t border-indigo-700">
-                <div class="px-4 text-indigo-200">
-                    <div class="font-medium text-base">{{ Auth::user()->name }}</div>
-                    <div class="font-medium text-sm">{{ Auth::user()->email }}</div>
+                <div class="px-4 text-indigo-200 flex items-center">
+
+                    @php
+                        $profilePicUrl = Auth::user()->profile_picture
+                            ? asset('storage/' . Auth::user()->profile_picture)
+                            : asset('default_images/default_avatar.png');
+                    @endphp
+
+                    <img src="{{ $profilePicUrl }}" alt="{{ Auth::user()->name }} Avatar"
+                        class="h-8 w-8 rounded-full object-cover mr-3 border border-indigo-400"
+                        onerror="this.onerror=null; this.src='{{ asset('default_images/default_avatar.png') }}';">
+                    <div>
+                        <div class="font-medium text-base">{{ Auth::user()->name }}</div>
+                        <div class="font-medium text-sm">{{ Auth::user()->email }}</div>
+                    </div>
                 </div>
 
                 <div class="mt-3 space-y-1">

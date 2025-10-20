@@ -8,10 +8,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // General User/Renter Info
             $table->string('phone_number')->nullable();
             $table->text('address')->nullable();
-            $table->string('profile_picture')->nullable(); // For User/Renter public profile pic
+            $table->string('profile_picture')->nullable();
         });
     }
 

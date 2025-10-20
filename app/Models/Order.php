@@ -5,15 +5,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // <-- ADD THIS
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes; // <-- USE SOFTDELETES
+    use HasFactory, SoftDeletes; 
 
     protected $casts = [
-        'start_date' => 'date', // Casts to Carbon object
-        'end_date' => 'date',   // Casts to Carbon object
+        'start_date' => 'date', 
+        'end_date' => 'date', 
     ];
     protected $fillable = [
         'order_code',
@@ -25,7 +25,6 @@ class Order extends Model
         'status'
     ];
 
-    // Relationships
     public function costume()
     {
         return $this->belongsTo(Costume::class);
@@ -33,6 +32,6 @@ class Order extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class); // The customer
+        return $this->belongsTo(User::class); 
     }
 }
