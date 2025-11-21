@@ -29,16 +29,34 @@
                             </div>
 
                             <p class="text-gray-300 text-sm">Price: Rp
-                                {{ number_format($costume->price_per_day, 0, ',', '.') }}/day</p>
+                                {{ number_format($costume->price_per_day, 0, ',', '.') }}/day
+                            </p>
 
                             <div class="mt-4 space-x-2">
-                                <form action="#" method="POST" class="inline">
+
+                                {{-- 1. APPROVE FORM (Unchanged, already works) --}}
+                                <form action="{{ route('admin.costumes.set_approval', ['costume_id' => $costume->id]) }}"
+                                    method="POST" class="inline">
                                     @csrf
-                                    {{-- <input type="hidden" name="status" value="approved"> --}}
+                                    <input type="hidden" name="action" value="approve">
                                     <button type="submit"
                                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm">Approve</button>
                                 </form>
-                                <a href="#" class="text-red-400 hover:text-red-600 text-sm">Reject w/ Notes</a>
+
+                                {{-- 2. REJECT FORM (FIXED: Now visible and requires confirmation) --}}
+                                <form action="{{ route('admin.costumes.set_approval', ['costume_id' => $costume->id]) }}"
+                                    method="POST" class="inline"
+                                    onsubmit="return confirm('WARNING: Are you absolutely sure you want to REJECT {{ $costume->name }}?');">
+                                    @csrf
+                                    <input type="hidden" name="action" value="reject">
+                                    {{-- You can add notes here if you actually implement a modal, but for now we keep it
+                                    simple: --}}
+                                    <input type="hidden" name="notes" value="Rejected by Admin: Failed inspection.">
+                                    <button type="submit"
+                                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm">Reject</button>
+                                </form>
+
+
                                 <a href="{{ route('costume.detail', ['id' => $costume->id]) }}"
                                     class="text-indigo-400 hover:text-indigo-600 text-sm">View Detail</a>
                             </div>

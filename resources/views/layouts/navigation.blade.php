@@ -2,6 +2,7 @@
     use Illuminate\Support\Facades\Auth;
 
     $user = Auth::user();
+    $isOwner = $user && $user->hasRole('owner');
     $isAdmin = $user && $user->hasRole('admin');
     $isRenter = $user && $user->hasRole('renter');
     $isUser = $user && $user->hasRole('user');
@@ -42,7 +43,12 @@
 
                     {{-- Auth Links --}}
                     @auth
-                        @if ($isAdmin)
+                        @if ($isOwner)
+                            <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')"
+                                class="text-red-300 hover:text-white">
+                                {{ __('Owner Deck') }}
+                            </x-nav-link>
+                        @elseif ($isAdmin)
                             <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')"
                                 class="text-red-300 hover:text-white">
                                 {{ __('Admin Deck') }}

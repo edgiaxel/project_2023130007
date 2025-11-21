@@ -9,7 +9,6 @@
         <form method="POST" action="{{ route('register') }}" class="space-y-6">
             @csrf
 
-            {{-- Account Type Selection (DUMMY FOR MIDTERM) --}}
             <div class="border-b border-gray-700 pb-4">
                 <x-input-label :value="__('Account Type')" class="text-pink-400" />
                 <div class="mt-2 flex space-x-6 text-gray-300">
@@ -53,6 +52,34 @@
                     class="block mt-1 w-full bg-gray-700 border-gray-600 text-white" type="password"
                     name="password_confirmation" required autocomplete="new-password" />
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+            </div>
+
+            <div class="pt-4 border-t border-gray-700">
+                <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
+
+                <div class="flex items-center space-x-3 mt-1">
+                    <div class="flex space-x-2 items-center shrink-0">
+                        <div id="captcha-img-container-register"
+                            class="w-36 h-10 bg-gray-700 border border-gray-600 rounded-md overflow-hidden flex items-center justify-center">
+                            **{!! captcha_img('flat') !!}**
+                        </div>
+
+                        <button type="button"
+                            onclick="document.getElementById('captcha-img-container-register').querySelector('img').src = '{{ route('captcha.custom', ['flat']) }}?' + Math.random();"
+                            class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition duration-150 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16.023 9.348h4.992v-.001m-4.992 0L16.023 21m-4.992-1.998v-.001m4.992-10.999L16.023 9m-4.992-4.998v.001m4.992 10.998v-.001m-10.999 4.992L3.024 16.023m1.992-4.992v.001m-1.992 4.992L3.024 16.023m1.992 4.992L3.024 16.023m1.992 4.992v.001m4.992-10.998v-.001" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
+                        name="captcha" required autocomplete="off" placeholder="Type the code above" />
+                </div>
+
+                <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
             </div>
 
             <div class="flex items-center justify-end mt-4">

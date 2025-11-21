@@ -15,17 +15,25 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // --- 1. SETUP ROLES AND BASE USERS ---
+        Role::firstOrCreate(['name' => 'owner']);
         Role::firstOrCreate(['name' => 'admin']);
         Role::firstOrCreate(['name' => 'renter']);
         Role::firstOrCreate(['name' => 'user']);
 
         $FILE_PATHS = [
+            'owner_avatar' => 'user_profiles/3.png',
             'admin_avatar' => 'user_profiles/3.png',
             'user_avatar' => 'user_profiles/2.png',
             'renter1_avatar' => 'user_profiles/4.png',
             'renter2_avatar' => 'user_profiles/5.png',
             'renter3_avatar' => 'user_profiles/1.png',
         ];
+
+        User::firstOrCreate(['email' => 'owner@starium.test'], [
+            'name' => 'Owner Boss', // Renamed for clarity, since they are the owner now
+            'password' => bcrypt('password'),
+            'profile_picture' => $FILE_PATHS['owner_avatar'],
+        ])->assignRole('owner'); // <--- NOW THEY ARE THE OWNER!
 
         User::firstOrCreate(['email' => 'admin@starium.test'], [
             'name' => 'Admin Boss',
@@ -151,19 +159,19 @@ class DatabaseSeeder extends Seeder
 
         // --- 3. CREATE PENDING COSTUMES FOR APPROVAL ---
         $pendingCostumesData = [
-            ['user_id' => 3, 'name' => 'Deadpool Suit', 'series' => 'Marvel', 'price' => 150000, 'tags' => ['Movie', 'Deadpool', 'Anti-Hero']],
-            ['user_id' => 3, 'name' => 'Space Marine Armor', 'series' => 'Warhammer 40k', 'price' => 200000, 'tags' => ['Game', 'Space Marine', 'Armor']],
+            ['user_id' => 4, 'name' => 'Deadpool Suit', 'series' => 'Marvel', 'price' => 150000, 'tags' => ['Movie', 'Deadpool', 'Anti-Hero']],
+            ['user_id' => 4, 'name' => 'Space Marine Armor', 'series' => 'Warhammer 40k', 'price' => 200000, 'tags' => ['Game', 'Space Marine', 'Armor']],
 
-            ['user_id' => 4, 'name' => 'Alice in Wonderland Dress', 'series' => 'Disney', 'price' => 70000, 'tags' => ['Movie', 'Alice', 'Fantasy']],
-            ['user_id' => 4, 'name' => 'Belle Ball Gown', 'series' => 'Beauty and the Beast', 'price' => 90000, 'tags' => ['Movie', 'Belle', 'Princess']],
-            
-            ['user_id' => 5, 'name' => 'Ichigo Bankai', 'series' => 'Bleach', 'price' => 110000, 'tags' => ['Anime', 'Ichigo', 'Shonen']],
-            ['user_id' => 5, 'name' => 'Goku Ultra Instinct', 'series' => 'Dragon Ball', 'price' => 130000, 'tags' => ['Anime', 'Goku', 'Shonen']],
+            ['user_id' => 5, 'name' => 'Alice in Wonderland Dress', 'series' => 'Disney', 'price' => 70000, 'tags' => ['Movie', 'Alice', 'Fantasy']],
+            ['user_id' => 5, 'name' => 'Belle Ball Gown', 'series' => 'Beauty and the Beast', 'price' => 90000, 'tags' => ['Movie', 'Belle', 'Princess']],
+
+            ['user_id' => 6, 'name' => 'Ichigo Bankai', 'series' => 'Bleach', 'price' => 110000, 'tags' => ['Anime', 'Ichigo', 'Shonen']],
+            ['user_id' => 6, 'name' => 'Goku Ultra Instinct', 'series' => 'Dragon Ball', 'price' => 130000, 'tags' => ['Anime', 'Goku', 'Shonen']],
         ];
 
         foreach ($pendingCostumesData as $costumeData) {
-            $imageName = 'costumes/' . str_replace([' ', '&', '(', ')'], ['_', '', '', ''], strtolower($costumeData['name'])) . '_pending.jpg'; // Different image name for pending items
-            
+            $imageName = 'costumes/' . str_replace([' ', '&', '(', ')'], ['_', '', '', ''], strtolower($costumeData['name'])) . '.jpg';
+
             Costume::firstOrCreate(['name' => $costumeData['name']], [
                 'user_id' => $costumeData['user_id'],
                 'series' => $costumeData['series'],
@@ -196,11 +204,11 @@ class DatabaseSeeder extends Seeder
 
                     // Define dates based on status
                     switch ($status) {
-                        case 'completed': 
+                        case 'completed':
                             $start = Carbon::now()->subMonths(1)->startOfMonth()->subDays(5);
                             $end = $start->copy()->addDays(5);
                             break;
-                        case 'returned': 
+                        case 'returned':
                             $start = Carbon::now()->subWeeks(1)->subDays(3);
                             $end = $start->copy()->addDays(7);
                             break;
@@ -208,15 +216,15 @@ class DatabaseSeeder extends Seeder
                             $start = Carbon::now()->subDays(2);
                             $end = Carbon::now()->addDays(5);
                             break;
-                        case 'confirmed': 
+                        case 'confirmed':
                             $start = Carbon::now()->addDays(5);
                             $end = $start->copy()->addDays(3);
                             break;
-                        case 'waiting': 
+                        case 'waiting':
                             $start = Carbon::now()->addDays(15);
                             $end = $start->copy()->addDays(2);
                             break;
-                        case 'rejected': 
+                        case 'rejected':
                             $start = Carbon::now()->subMonths(2);
                             $end = $start->copy()->addDays(4);
                             break;
@@ -237,11 +245,14 @@ class DatabaseSeeder extends Seeder
                         'status' => $status,
                     ]);
 
-                    $orderCounter++; 
-                } 
+                    $orderCounter++;
+                }
             }
         }
 
-        $this->call(BannerSeeder::class);
+        $this->call(BannerSeeder::class); // Assuming you made one
+
+        // NEW: Call Permission Seeder before other seeds to ensure roles exist
+        $this->call(PermissionSeeder::class);
     }
 }

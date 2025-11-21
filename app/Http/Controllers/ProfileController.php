@@ -15,9 +15,6 @@ use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
     public function edit(Request $request): View
     {
         return view('profile.edit', [
@@ -25,17 +22,12 @@ class ProfileController extends Controller
         ]);
     }
 
-    /**
-     * Update the user's profile information.
-     */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
 
-        // 1. Fill basic user data (validated by ProfileUpdateRequest)
         $user->fill($request->validated());
 
-        // 2. Handle Profile Picture Upload for the User (All Roles)
         $profilePicPath = $user->profile_picture;
         if ($request->hasFile('profile_picture')) {
             if ($profilePicPath && Storage::disk('public')->exists($profilePicPath)) {
@@ -45,7 +37,6 @@ class ProfileController extends Controller
         }
         $user->profile_picture = $profilePicPath;
 
-        // 3. Handle email verification status
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
@@ -54,10 +45,6 @@ class ProfileController extends Controller
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
-
-    /**
-     * Delete the user's account.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [
@@ -78,7 +65,6 @@ class ProfileController extends Controller
 
     public function updateRenterStore(Request $request): RedirectResponse
     {
-        // 1. Validation for RenterStore fields
         $validatedStore = $request->validate([
             'store_name' => [
                 'required',
@@ -92,7 +78,6 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        // 2. Handle File Upload (Logo)
         $logoPath = $user->store->store_logo_path ?? null;
         if ($request->hasFile('store_logo')) {
             if ($logoPath && Storage::disk('public')->exists($logoPath)) {
@@ -101,7 +86,6 @@ class ProfileController extends Controller
             $logoPath = $request->file('store_logo')->store('store_logos', 'public'); 
         }
 
-        // 3. Update or Create RenterStore record
         RenterStore::updateOrCreate(
             ['user_id' => $user->id],
             [

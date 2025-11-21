@@ -53,13 +53,15 @@
                 }
             }
         }">
-            
+
             <div class="bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 border-t-4 border-indigo-500">
-                <h3 class="text-2xl font-bold text-white mb-6">My Current Catalog (<span x-text="costumes.length"></span> Listings)</h3>
+                <h3 class="text-2xl font-bold text-white mb-6">My Current Catalog (<span
+                        x-text="costumes.length"></span> Listings)</h3>
 
                 <div class="flex space-x-4 mb-4 items-center">
                     <label for="filterStatus" class="text-gray-400">Filter Status:</label>
-                    <select x-model="filterStatus" id="filterStatus" class="bg-gray-700 border-pink-500 rounded-md text-white text-sm py-2 px-3">
+                    <select x-model="filterStatus" id="filterStatus"
+                        class="bg-gray-700 border-pink-500 rounded-md text-white text-sm py-2 px-3">
                         <option value="">ALL STATUSES</option>
                         <option value="live">LIVE (Approved)</option>
                         <option value="pending">PENDING ADMIN</option>
@@ -71,13 +73,15 @@
                         <thead class="bg-gray-700">
                             <tr>
                                 @foreach (['Costume Name' => 'name', 'Series' => 'series', 'Stock' => 'stock', 'Price/Day' => 'price_per_day', 'Status' => 'is_approved'] as $label => $column)
-                                    <th @click="sort('{{ $column }}')" 
+                                    <th @click="sort('{{ $column }}')"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition">
                                         {{ $label }}
-                                        <span x-show="sortColumn === '{{ $column }}'" x-text="sortDirection === 'asc' ? ' ▲' : ' ▼'"></span>
+                                        <span x-show="sortColumn === '{{ $column }}'"
+                                            x-text="sortDirection === 'asc' ? ' ▲' : ' ▼'"></span>
                                     </th>
                                 @endforeach
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Actions</th>
                             </tr>
                         </thead>
@@ -86,21 +90,45 @@
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap" x-text="costume.name"></td>
                                     <td class="px-6 py-4 whitespace-nowrap" x-text="costume.series"></td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-lg font-bold text-indigo-400" x-text="costume.stock"></td>
-                                    <td class="px-6 py-4 whitespace-nowrap">Rp <span x-text="Number(costume.price_per_day).toLocaleString('id-ID')"></span></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-lg font-bold text-indigo-400"
+                                        x-text="costume.stock"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap">Rp <span
+                                            x-text="Number(costume.price_per_day).toLocaleString('id-ID')"></span></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white"
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white"
                                             :class="{'bg-green-700': costume.is_approved, 'bg-yellow-700': !costume.is_approved}"
                                             x-text="costume.is_approved ? 'LIVE' : 'PENDING ADMIN'">
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <a href="#" class="text-indigo-400 hover:text-indigo-600">Edit</a>
-                                        <a href="#" class="text-red-400 hover:text-red-600">Delete (Soft)</a>
+                                        {{-- 🤬 EDIT LINK FIX: Force the path structure and use Alpine for ID injection
+                                        --}}
+                                        @php
+                                            // Generate the base URL structure using a dummy placeholder ID (e.g., /costumes/XX/edit)
+                                            // We use 'XX' instead of '0' for cleaner replacement later.
+                                            $editUrlBase = route('renter.costumes.edit', ['costume_id' => 'XX']); 
+                                        @endphp
+
+                                        <a :href="'{{ $editUrlBase }}'.replace('XX', costume.id)"
+                                            class="text-indigo-400 hover:text-indigo-600">Edit</a>
+
+                                        {{-- DELETE (SOFT) FORM FIX: Use the same replacement method --}}
+                                        @php
+                                            $deleteUrlBase = route('renter.costumes.delete', ['costume_id' => 'XX']);
+                                        @endphp
+                                        <form :action="'{{ $deleteUrlBase }}'.replace('XX', costume.id)" method="POST"
+                                            class="inline"
+                                            @submit.prevent="if (confirm('Are you sure you want to soft delete ' + costume.name + '?')) $el.submit()">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-400 hover:text-red-600">Delete
+                                                (Soft)</button>
+                                        </form>
                                     </td>
                                 </tr>
                             </template>
-                            
+
                             <tr x-show="filteredCostumes.length === 0">
                                 <td colspan="6" class="px-6 py-4 text-center text-gray-400">
                                     No costumes match the current filter.

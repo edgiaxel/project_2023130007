@@ -8,7 +8,8 @@
     <div class="py-12" style="background-color: #0d0d1f;">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 border-t-4 border-pink-500">
-                <form action="#" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <form action="{{ route('renter.costumes.store') }}" method="POST" enctype="multipart/form-data"
+                    class="space-y-6">
                     @csrf
                     <div>
                         <x-input-label for="character_name" :value="__('Character Name')" class="text-pink-400" />
@@ -63,8 +64,7 @@
                     {{-- Stock, Tags, and Images --}}
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <x-input-label for="stock" :value="__('Stock')"
-                                class="text-pink-400" />
+                            <x-input-label for="stock" :value="__('Stock')" class="text-pink-400" />
                             <x-text-input id="stock" class="block mt-1 w-full bg-gray-700 border-gray-600 text-white"
                                 type="number" name="stock" value="1" required />
                         </div>

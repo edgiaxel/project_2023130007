@@ -14,25 +14,19 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
     public function create(): View
     {
         return view('auth.register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
+        
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'captcha' => ['required', 'captcha'],
         ]);
 
         $user = User::create([
@@ -41,10 +35,8 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // FIX REQUIRED: Assign the default role based on your registration form or default logic.
-        $role = $request->role_type ?? 'user'; // Defaults to 'user' if radio button value is missing.
+        $role = $request->role_type ?? 'user';
 
-        // Ensure role is valid (prevents users from registering as 'admin')
         if ($role === 'renter') {
             $user->assignRole('renter');
         } else {
@@ -56,5 +48,7 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         return redirect(route('dashboard', absolute: false));
+
+        
     }
 }

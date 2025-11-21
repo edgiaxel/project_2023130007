@@ -25,6 +25,30 @@
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
 
+            {{-- <div>
+                <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
+
+                <div class="flex items-center space-x-3 mt-1">
+
+                    <div class="flex space-x-2 items-center shrink-0">
+                        <div id="captcha-img-container"
+                            class="w-36 h-10 bg-gray-700 border border-gray-600 rounded-md overflow-hidden flex items-center justify-center">
+                            **{!! captcha_img('flat') !!}** </div>
+
+                        <button type="button"
+                            onclick="document.getElementById('captcha-img-container').querySelector('img').src = '{{ route('captcha.custom', ['flat']) }}?' + Math.random();"
+                            class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition duration-150 shrink-0"> 
+                            Refresh
+                        </button>
+                    </div>
+
+                    <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
+                        name="captcha" required autocomplete="off" placeholder="Type the code above" />
+                </div>
+
+                <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
+            </div> --}}
+
             <div class="block">
                 <label for="remember_me" class="inline-flex items-center">
                     <input id="remember_me" type="checkbox"
@@ -50,6 +74,7 @@
                 New to the cosmos? <a href="{{ route('register') }}"
                     class="text-pink-400 hover:text-pink-300 font-semibold">Register Here</a>.
             </p>
+
         </form>
     </div>
 </x-guest-layout>

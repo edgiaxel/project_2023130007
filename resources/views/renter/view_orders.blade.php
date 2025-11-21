@@ -10,8 +10,10 @@
         ->get();
 
     $pendingOrders = $orders->where('status', 'waiting');
-    $ongoingRentals = $orders->whereIn('status', ['confirmed', 'borrowed']);
-    $pastOrders = $orders->whereIn('status', ['returned', 'completed', 'rejected']);
+    // FIX 1: INCLUDE 'returned' in Ongoing Rentals for final check
+    $ongoingRentals = $orders->whereIn('status', ['confirmed', 'borrowed', 'returned']);
+    // FIX 2: Only 'completed' and 'rejected' are truly past/archived
+    $pastOrders = $orders->whereIn('status', ['completed', 'rejected']);
 @endphp
 
 <x-app-layout>
@@ -42,12 +44,23 @@
                         </p>
                         <p class="text-sm text-yellow-400 font-semibold mt-2">Status: WAITING CONFIRMATION</p>
                         <div class="mt-3 space-x-2">
-                            <a href="#"
-                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm">Confirm
-                                Order</a>
-                            <a href="#"
-                                class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Reject</a>
-                            <a href="#" class="text-indigo-400 hover:text-indigo-600 text-sm">View Details</a>
+                            {{-- CONFIRM FORM --}}
+                            <form action="{{ route('renter.orders.confirm', $order->id) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit"
+                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm">Confirm
+                                    Order</button>
+                            </form>
+
+                            {{-- REJECT FORM --}}
+                            <form action="{{ route('renter.orders.reject', $order->id) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit"
+                                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Reject</button>
+                            </form>
+
+                            <a href="{{ route('costume.detail', $order->costume_id) }}" target="_blank"
+                                class="text-indigo-400 hover:text-indigo-600 text-sm">View Costume</a>
                         </div>
                     </div>
                 @empty
@@ -76,10 +89,46 @@
                         </p>
                         <p class="text-2xl font-extrabold text-indigo-400 mt-3">STATUS: {{ $statusText }}</p>
                         <div class="mt-3 space-x-2">
-                            <a href="#"
-                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">Mark as
-                                Returned</a>
-                            <a href="#" class="text-indigo-400 hover:text-indigo-600 text-sm">View Details</a>
+
+                            {{-- 💥 NEW: MARK AS COMPLETED BUTTON (Only appears after RETURNED) --}}
+                            @if ($order->status === 'returned')
+                                <form action="{{ route('renter.orders.update.status', $order->id) }}" method="POST"
+                                    class="inline">
+                                    @csrf
+                                    <input type="hidden" name="new_status" value="completed">
+                                    <button type="submit"
+                                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm">
+                                        Confirm Check & Finalize
+                                    </button>
+                                </form>
+                            @endif
+
+                            {{-- MARK AS RETURNED FORM (Only show if borrowed/confirmed) --}}
+                            @if ($order->status === 'borrowed' || $order->status === 'confirmed')
+                                <form action="{{ route('renter.orders.update.status', $order->id) }}" method="POST"
+                                    class="inline">
+                                    @csrf
+                                    <input type="hidden" name="new_status" value="returned">
+                                    <button type="submit"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">Mark
+                                        as Returned</button>
+                                </form>
+                            @endif
+
+                            {{-- MARK AS BORROWED FORM (Only show if status is confirmed) --}}
+                            @if ($order->status === 'confirmed')
+                                <form action="{{ route('renter.orders.update.status', $order->id) }}" method="POST"
+                                    class="inline">
+                                    @csrf
+                                    <input type="hidden" name="new_status" value="borrowed">
+                                    <button type="submit"
+                                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm">Mark
+                                        as Borrowed</button>
+                                </form>
+                            @endif
+
+                            <a href="{{ route('order.detail', $order->id) }}" target="_blank"
+                                class="text-indigo-400 hover:text-indigo-600 text-sm">View Details</a>
                         </div>
                     </div>
                 @empty
@@ -88,6 +137,35 @@
             </div>
 
             <h3 class="text-2xl font-bold text-green-400 mb-6 mt-12">Rental History (Completed/Rejected)</h3>
+            <div class="space-y-4">
+                @forelse ($pastOrders as $order)
+                    @php
+                        $color = ($order->status === 'completed') ? 'border-green-500' : 'border-red-800';
+                        $statusText = strtoupper($order->status);
+                    @endphp
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-lg border-l-4 {{ $color }}">
+                        <p class="text-xs text-gray-400">Order ID: {{ $order->order_code }} | Customer:
+                            {{ $order->user->name ?? 'N/A' }}
+                        </p>
+                        <h4 class="text-xl font-bold text-white mt-1">Costume:
+                            {{ $order->costume->name ?? 'Costume Deleted' }} (Size {{ $order->costume->size ?? 'N/A' }})
+                        </h4>
+                        <p class="text-sm text-gray-300">Dates: {{ $order->start_date->format('d M') }} to
+                            {{ $order->end_date->format('d M') }}
+                        </p>
+                        <p class="text-xl font-extrabold mt-3"
+                            style="color: {{ $color === 'border-green-500' ? '#10B981' : '#F87171' }};">
+                            STATUS: {{ $statusText }}
+                        </p>
+                        <div class="mt-3 space-x-2">
+                            <a href="{{ route('order.detail', $order->id) }}"
+                                class="text-indigo-400 hover:text-indigo-600 text-sm">View Details</a>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-gray-400">No completed or rejected orders in history.</p>
+                @endforelse
+            </div>
         </div>
     </div>
 </x-app-layout>
