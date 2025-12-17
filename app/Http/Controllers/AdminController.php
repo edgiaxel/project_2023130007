@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Costume;
 use App\Models\Order;
 use App\Models\User;
-use App\Models\GlobalDiscount;
 use App\Models\CatalogBanner;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -16,32 +15,48 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Spatie\Permission\Models\Role; // ADD THIS
-use Spatie\Permission\Models\Permission; // ADD THIS
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use App\Http\Controllers\OrderController; // Ensure import is present
 
 class AdminController extends Controller
-{
+{// Fix all methods that use Auth::user()->hasRole or Auth::user()->hasPermissionTo
+
+    /** @var User $currentUser */ // Add this DocBlock for clarity/IDE fix
+    // Example: public function updateRole(Request $request, int $userId): RedirectResponse
+    // Find Auth::user() and add the explicit User model reference:
     public function dashboard(): View
     {
+        OrderController::checkAndExpireOverdueOrders();
         // 1. GLOBAL KPIs
-        $totalCostumes = Costume::where('is_approved', true)->count();
+        // NEW: Use the new 'status' column and the string 'approved'
+        $totalCostumes = Costume::where('status', 'approved')->count();
+
         $totalRenters = User::role('renter')->count();
         $totalUsers = User::role('user')->count();
-        $pendingApprovals = Costume::where('is_approved', false)->count();
+
+        // NEW: Use the new 'status' column and the string 'pending'
+        $pendingApprovals = Costume::where('status', 'pending')->count();
+
         $totalRevenue = Order::where('status', 'completed')->sum('total_price');
 
         // 2. RENTER ANALYTICS SUMMARY (for chart/table data)
-        $renterSummaries = User::role('renter')->withCount('costumes')->get()->map(function ($renter) {
-            $revenue = Order::whereHas('costume', fn($q) => $q->where('user_id', $renter->id))
-                ->where('status', 'completed')
-                ->sum('total_price');
+        $renterSummaries = User::role('renter')->get()->map(function ($renter) {
+            $costumeQuery = $renter->costumes(); // Get base query
+
+            // Get costume counts by status
+            $renter->active_costumes = (clone $costumeQuery)->where('status', 'approved')->count();
+            $renter->pending_costumes = (clone $costumeQuery)->where('status', 'pending')->count();
+            $renter->rejected_costumes = (clone $costumeQuery)->where('status', 'rejected')->count();
+            $renter->total_costumes = $renter->active_costumes + $renter->pending_costumes + $renter->rejected_costumes; // Grand total
+
+            $revenue = Order::whereHas('costume', fn($q) => $q->where('user_id', $renter->id))->where('status', 'completed')->sum('total_price');
             $renter->revenue = $revenue;
-            $renter->top_costume = $renter->costumes->first()->name ?? 'N/A';
+
+            // Fetch the top costume from the approved list if possible
+            $renter->top_costume = (clone $costumeQuery)->where('status', 'approved')->first()->name ?? 'N/A';
             return $renter;
         })->sortByDesc('revenue')->take(5);
-
-        // 3. Global Discount Status
-        $globalDiscount = GlobalDiscount::first() ?? new GlobalDiscount(['rate' => 0, 'is_active' => false]);
 
         return view('admin.dashboard', compact(
             'totalCostumes',
@@ -49,8 +64,7 @@ class AdminController extends Controller
             'totalUsers',
             'pendingApprovals',
             'totalRevenue',
-            'renterSummaries',
-            'globalDiscount'
+            'renterSummaries'
         ));
     }
 
@@ -78,8 +92,9 @@ class AdminController extends Controller
     }
     public function approvalQueue(): View
     {
-        $pendingCostumes = Costume::where('is_approved', false)
-            ->with('renter.store')
+        // 💥 FIX: Query by the new 'status' column string value
+        $pendingCostumes = Costume::where('status', 'pending')
+            ->with(['renter.store', 'images']) // 💥 ADDED IMAGES
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -111,11 +126,6 @@ class AdminController extends Controller
         return view('admin.manage_costumes', compact('costumes'));
     }
 
-    public function manageDiscounts(): View
-    {
-        $globalDiscount = GlobalDiscount::first() ?? new GlobalDiscount(['rate' => 0, 'is_active' => false]);
-        return view('admin.manage_discounts', compact('globalDiscount'));
-    }
     public function setGlobalDiscount(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -132,12 +142,6 @@ class AdminController extends Controller
         );
 
         return redirect()->route('admin.discounts.manage')->with('status', 'Global flash sale updated.');
-    }
-
-    public function manageBanners(): View
-    {
-        $banners = CatalogBanner::orderBy('order')->get();
-        return view('admin.manage_banners', compact('banners'));
     }
 
     /**
@@ -237,6 +241,9 @@ class AdminController extends Controller
      * Sets the approval status of a costume (Admin action).
      * The costume status should be set, saved, and the page redirected.
      */
+    /**
+     * Sets the approval status of a costume (Admin action).
+     */
     public function setCostumeApproval(Request $request, int $costume_id): RedirectResponse
     {
         $costume = Costume::findOrFail($costume_id);
@@ -246,18 +253,17 @@ class AdminController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        // 💥 FIX: Set 'status' string based on action
         if ($validated['action'] === 'approve') {
-            $costume->is_approved = true;
+            $costume->status = 'approved';
             $message = 'Costume "' . $costume->name . '" has been **APPROVED** and is now live!';
         } else {
-            // Rejection logic: Sets is_approved to FALSE.
-            $costume->is_approved = false;
+            // Rejection logic: Sets status to 'rejected'.
+            $costume->status = 'rejected';
             $message = 'Costume "' . $costume->name . '" has been **REJECTED**. Notes: ' . ($validated['notes'] ?? 'None provided.');
         }
 
         $costume->save();
-
-        // The redirect location is correct for showing the status message.
         return Redirect::route('admin.costumes.approval')->with('status', $message);
     }
 
@@ -267,6 +273,7 @@ class AdminController extends Controller
     public function updateRole(Request $request, int $userId): RedirectResponse
     {
         $userToUpdate = User::findOrFail($userId);
+        /** @var \App\Models\User $currentUser */
         $currentUser = Auth::user();
 
         // 1. Core Security Checks
@@ -274,7 +281,7 @@ class AdminController extends Controller
             return Redirect::back()->withErrors(['role_error' => 'ERROR: You cannot modify your own role while logged in.']);
         }
 
-        // **NEW CRITICAL CHECK: OWNER PERMISSION**
+        // **NEW CRITICAL CHECK: OWNER PERMISSION** (Uses hasPermissionTo method)
         if (!$currentUser->hasPermissionTo('user:manage-roles')) {
             if ($userToUpdate->hasAnyRole(['admin', 'owner']) || $request->input('role_name') === 'owner' || $request->input('role_name') === 'admin') {
                 return Redirect::back()->withErrors(['role_error' => 'ACCESS DENIED: You lack the cosmic clearance to manage this role. Only the true Owner can touch Admin/Owner accounts.']);
@@ -297,6 +304,13 @@ class AdminController extends Controller
 
     public function editUserPermissions(int $userId): View
     {
+        /** @var \App\Models\User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$currentUser->hasRole('owner')) {
+            abort(403, 'Permission denied. Only the ultimate cosmic being can edit permissions.');
+        }
+
         $userToEdit = User::with('roles', 'permissions')->findOrFail($userId);
         $roles = Role::all();
         $allPermissions = Permission::all()->sortBy('name');
@@ -307,7 +321,10 @@ class AdminController extends Controller
 
     public function syncUserPermissions(Request $request, int $userId): RedirectResponse
     {
-        if (!Auth::user()->hasRole('owner')) {
+        /** @var \App\Models\User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$currentUser->hasRole('owner')) {
             abort(403, 'Permission denied. You are not the chosen one.');
         }
 
@@ -367,5 +384,306 @@ class AdminController extends Controller
         );
 
         return Redirect::route('admin.stores.view', $renter->id)->with('status', 'Store profile for ' . $renter->name . ' updated successfully by Admin.');
+    }
+
+    /**
+     * Toggles the active status of a Renter Store and handles related records.
+     * @param int $userId The ID of the Renter (User) whose store is being toggled.
+     */
+    public function toggleStoreStatus(int $userId): RedirectResponse
+    {
+        $renter = User::role('renter')
+            ->with(['store', 'costumes.orders'])
+            ->findOrFail($userId);
+        $store = $renter->store;
+
+        if (!$store) {
+            return Redirect::back()->withErrors(['store_error' => 'Store profile missing for this renter.']);
+        }
+
+        $newStatus = !$store->is_active;
+        $store->is_active = $newStatus;
+        $store->save();
+
+        $message = $newStatus ? 'activated' : 'deactivated';
+        $statusUpdateMessage = '';
+
+        // Get all ongoing orders for this renter's costumes (unchanged logic)
+        $orders = Order::whereIn('costume_id', $renter->costumes->pluck('id'))
+            ->whereIn('status', ['waiting', 'confirmed', 'borrowed', 'returned']);
+
+        if (!$newStatus) {
+            // --- DEACTIVATION LOGIC ---
+            $orders->update(['status' => 'rejected']);
+
+            $renter->costumes->each(function ($costume) {
+                // Only save original status AND change if currently approved
+                if ($costume->status === 'approved') {
+                    $costume->original_status = 'approved'; // Record the original status
+                    $costume->status = 'pending';          // Set current status to pending (unavailable)
+                    $costume->save();
+                } else {
+                    // For already pending/rejected items, just clear the original_status flag
+                    $costume->original_status = null;
+                    $costume->save();
+                }
+            });
+
+            $statusUpdateMessage = "All approved listings moved to pending/hidden. Active orders rejected.";
+
+        } else {
+            // --- ACTIVATION LOGIC ---
+
+            $restoredCount = 0;
+            $renter->costumes->each(function ($costume) use (&$restoredCount) {
+                // Restore only if the costume was ACTIVE before deactivation
+                if ($costume->original_status === 'approved') {
+                    $costume->status = 'approved'; // Set status back to live
+                    $costume->original_status = null; // Clear the flag
+                    $costume->save();
+                    $restoredCount++;
+                }
+            });
+
+            $statusUpdateMessage = "Restored **{$restoredCount}** approved listings. Store open for new business.";
+        }
+
+
+        return Redirect::route('admin.stores.manage')->with('status', "Store **{$store->store_name}** has been {$message}. {$statusUpdateMessage}");
+    }
+
+    /**
+     * Shows a list of all soft-deleted items (Users, Costumes).
+     */
+    public function softDeletedItems(): View
+    {
+        // Fetch all soft-deleted Users (except the current user)
+        $deletedUsers = User::onlyTrashed()->with('roles', 'store')->where('id', '!=', Auth::id())->get();
+
+        // Fetch all soft-deleted Costumes
+        $deletedCostumes = Costume::onlyTrashed()->with('renter.store')->get();
+
+        // Optional: Fetch deleted orders if needed (we'll focus on Users/Costumes for now)
+        // $deletedOrders = Order::onlyTrashed()->get();
+        // 💥 NEW: 3. Fetch Trashed Banners
+        $deletedBanners = \App\Models\CatalogBanner::onlyTrashed()->get();
+
+        return view('admin.soft_deleted_items', compact('deletedUsers', 'deletedCostumes', 'deletedBanners'));
+    }
+
+    /**
+     * Restores a soft-deleted user.
+     */
+    public function restoreUser(int $userId): RedirectResponse
+    {
+        // Use withTrashed() to find deleted users
+        $user = User::withTrashed()->findOrFail($userId);
+        $user->restore();
+
+        // Restore related RenterStore if it exists
+        if ($user->store) {
+            $user->store->restore(); // Assuming RenterStore supports soft deletes if needed, but not implemented above.
+        }
+
+        return Redirect::route('admin.soft_delete.index')->with('status', 'User ' . $user->name . ' has been restored from the trash.');
+    }
+
+    /**
+     * Permanently deletes a soft-deleted user and all related data (forceDelete).
+     */
+    public function forceDeleteUser(int $userId): RedirectResponse
+    {
+        // Use withTrashed() to find deleted users
+        $user = User::withTrashed()->findOrFail($userId);
+        $name = $user->name;
+
+        // Force delete the user, which should cascade to related models (Costumes, Orders, Store)
+        $user->forceDelete();
+
+        return Redirect::route('admin.soft_delete.index')->with('status', 'User ' . $name . ' and all associated data have been PERMANENTLY ERASED.');
+    }
+
+    /**
+     * Soft deletes a user (moves to trash).
+     */
+    public function softDeleteUser(int $userId): RedirectResponse
+    {
+        $user = User::findOrFail($userId);
+
+        if (Auth::id() === $userId) {
+            return Redirect::back()->withErrors(['error' => 'You cannot soft delete yourself while logged in.']);
+        }
+
+        $user->delete(); // Soft Delete
+
+        return Redirect::route('admin.users')->with('status', 'User ' . $user->name . ' moved to Trash bin. Review there to restore or permanent delete.');
+    }
+
+    /**
+     * Restore a soft-deleted banner.
+     */
+    public function restoreBanner(int $bannerId): RedirectResponse
+    {
+        $banner = \App\Models\CatalogBanner::onlyTrashed()->findOrFail($bannerId);
+
+        // Logic: Put it at the end of the current active list
+        $nextOrder = \App\Models\CatalogBanner::max('order') + 1;
+        $banner->order = $nextOrder ?: 1;
+
+        $banner->restore();
+
+        return Redirect::route('admin.soft_delete.index')->with('status', "Banner '{$banner->title}' restored to position {$banner->order}.");
+    }
+
+    /**
+     * Permanently delete a banner and its image file.
+     */
+    public function forceDeleteBanner(int $bannerId): RedirectResponse
+    {
+        $banner = \App\Models\CatalogBanner::onlyTrashed()->findOrFail($bannerId);
+
+        // NOW we delete the actual file because it's being erased from the galaxy!
+        if ($banner->image_path && \Storage::disk('public')->exists($banner->image_path)) {
+            \Storage::disk('public')->delete($banner->image_path);
+        }
+
+        $banner->forceDelete();
+
+        return Redirect::route('admin.soft_delete.index')->with('status', "Banner permanently erased from storage.");
+    }
+
+    /**
+     * Show a list of all costumes with their current discount status.
+     */
+    public function manageDiscounts(): View
+    {
+        // Fetch all costumes with their renter store information
+        $costumes = Costume::with('renter.store')->get()->map(function ($costume) {
+            // Calculate dynamic properties for display
+            $costume->original_price = $costume->price_per_day;
+            $costume->final_price = $costume->final_price; // Uses accessor
+            $costume->is_on_sale = $costume->is_on_sale; // Uses accessor
+            return $costume;
+        });
+
+        return view('admin.manage_discounts', compact('costumes'));
+    }
+
+    /**
+     * Show list of all Banners for modular management.
+     */
+    public function manageBanners(): View
+    {
+        $banners = CatalogBanner::orderBy('order')->get();
+        $maxBanners = 5;
+        $minBanners = 1;
+
+        // 💥 Pass these limits to the view
+        return view('admin.manage_banners', compact('banners', 'maxBanners', 'minBanners'));
+    }
+
+    /**
+     * Handle adding a new banner, enforcing the max count limit (5).
+     */
+    public function addBanner(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'image_file' => 'required|image|mimes:jpeg,png,jpg|max:3048',
+        ]);
+
+        $currentCount = CatalogBanner::count();
+        $maxBanners = 5;
+
+        if ($currentCount >= $maxBanners) {
+            return Redirect::back()->withErrors(['banner_limit' => 'Maximum limit of 5 banners reached.']);
+        }
+
+        $imagePath = $request->file('image_file')->store('banners', 'public');
+        $nextOrder = CatalogBanner::max('order') + 1;
+        if ($nextOrder === null) {
+            $nextOrder = 1;
+        }
+
+        CatalogBanner::create([
+            'title' => $validated['title'],
+            'image_path' => $imagePath,
+            'order' => $nextOrder,
+        ]);
+
+        return Redirect::route('admin.banners.manage')->with('status', 'New banner added successfully!');
+    }
+
+    /**
+     * Handle deleting a banner, enforcing the minimum count limit (1).
+     */
+    public function deleteBanner(int $bannerId): RedirectResponse
+    {
+        $banner = CatalogBanner::findOrFail($bannerId);
+        $currentCount = CatalogBanner::count();
+        $minBanners = 1;
+
+        if ($currentCount <= $minBanners) {
+            return Redirect::back()->withErrors(['banner_limit' => 'Cannot delete the last banner. Minimum limit of 1 banner required.']);
+        }
+
+        $oldOrder = $banner->order;
+        $bannerName = $banner->title;
+
+        // 💥 REMOVE OR COMMENT OUT THESE LINES:
+        /*
+        if ($banner->image_path && Storage::disk('public')->exists($banner->image_path)) {
+            Storage::disk('public')->delete($banner->image_path);
+        }
+        */
+
+        // This now only marks 'deleted_at' in the DB because of the SoftDeletes trait!
+        $banner->delete();
+
+        // Reorder remaining banners so the numbers stay 1, 2, 3...
+        CatalogBanner::where('order', '>', $oldOrder)->decrement('order');
+
+        return Redirect::route('admin.banners.manage')->with('status', "Banner '{$bannerName}' moved to trash.");
+    }
+
+    /**
+     * Swaps the order of two adjacent banners.
+     */
+    public function swapBannerOrder(Request $request, int $bannerId): RedirectResponse
+    {
+        $banner = CatalogBanner::findOrFail($bannerId);
+        $direction = $request->input('direction');
+
+        $neighbor = CatalogBanner::where('order', $direction === 'up' ? $banner->order - 1 : $banner->order + 1)->first();
+
+        if ($neighbor) {
+            // Swap order numbers using a temporary high ID to avoid UNIQUE constraint violation
+            $oldOrder = $banner->order;
+            $newOrder = $neighbor->order;
+
+            try {
+                DB::transaction(function () use ($banner, $neighbor, $oldOrder, $newOrder) {
+                    // 1. Temporarily set one banner's order to a safe, non-conflicting number (e.g., max order + 1)
+                    $banner->order = CatalogBanner::max('order') + 1;
+                    $banner->save();
+
+                    // 2. Set the neighbor's order to the main banner's old order
+                    $neighbor->order = $oldOrder;
+                    $neighbor->save();
+
+                    // 3. Set the main banner's order to the neighbor's old order
+                    $banner->order = $newOrder;
+                    $banner->save();
+                });
+
+                return Redirect::back()->with('status', 'Banner order swapped successfully!');
+            } catch (\Exception $e) {
+                // Log the error and return a generic fail message if the transaction fails unexpectedly
+                \Log::error("Banner swap failed: " . $e->getMessage());
+                return Redirect::back()->withErrors(['order_error' => 'An internal database error occurred during the swap.']);
+            }
+        }
+
+        return Redirect::back()->withErrors(['order_error' => 'Cannot move banner further in that direction.']);
     }
 }

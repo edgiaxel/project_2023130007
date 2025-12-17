@@ -8,15 +8,17 @@ use App\Models\Costume;
 use App\Models\User; // We need the User model for searching stores/users
 use Illuminate\Http\Request;
 use App\Models\CatalogBanner;
+use App\Http\Controllers\OrderController; // Ensure import is present
 
 class CatalogController extends Controller
 {
     public function index(Request $request)
     {
+        OrderController::checkAndExpireOverdueOrders();
+
         $searchQuery = $request->query('search');
         $perPage = $request->input('per_page', 10);
         $perPageOptions = [10, 25, 50];
-        $DISCOUNT_RATE = 0.15;
 
         $MEDIA_CATEGORIES = ['Anime', 'Movie', 'Game', 'TV', 'Other'];
 
@@ -32,16 +34,14 @@ class CatalogController extends Controller
         }
 
         // 2. Fetch all approved costumes with relationships and apply discount
-        $costumesCollection = $costumesQuery->where('is_approved', true)
-            ->with(['renter.store'])
+        // 💥 MODIFIED: Rely on model accessors and remove manual calculation
+        // 💥 FIX: Add whereHas('renter') to ensure the owner exists and is not deleted!
+        $costumesCollection = $costumesQuery->where('status', 'approved')
+            ->whereHas('renter') // This automatically filters out costumes with soft-deleted owners
+            ->with(['renter.store', 'images'])
             ->get()
-            ->map(function ($costume) use ($DISCOUNT_RATE) {
-                $costume->is_on_sale = true;
-                $costume->original_price = $costume->price_per_day;
-                $costume->discounted_price = $costume->price_per_day * (1 - $DISCOUNT_RATE);
-
+            ->map(function ($costume) {
                 $costume->media_group = $costume->tags[0] ?? 'Other';
-
                 return $costume;
             });
 
@@ -62,6 +62,6 @@ class CatalogController extends Controller
         // 5. Redirection logic (omitted)
         $banners = CatalogBanner::orderBy('order')->get(); // <-- NEW
 
-        return view('catalog', compact('costumesCollection', 'costumesPaginated', 'perPage', 'perPageOptions', 'MEDIA_CATEGORIES', 'DISCOUNT_RATE', 'groupedCostumes', 'banners'));
+        return view('catalog', compact('costumesCollection', 'costumesPaginated', 'perPage', 'perPageOptions', 'MEDIA_CATEGORIES', 'groupedCostumes', 'banners'));
     }
 }

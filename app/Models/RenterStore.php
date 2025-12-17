@@ -14,6 +14,7 @@ class RenterStore extends Model
         'store_name',
         'description',
         'store_logo_path',
+        'is_active',
     ];
 
     public function user()

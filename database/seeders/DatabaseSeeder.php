@@ -8,12 +8,42 @@ use App\Models\Order;
 use App\Models\RenterStore;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
-use Carbon\Carbon; // Added for orders
+use Carbon\Carbon;
+use App\Models\CostumeImage;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // --- HELPER FUNCTIONS ---
+        // Function to generate random stock (5 to 15)
+        $randomStock = fn() => rand(5, 15);
+
+        // Function to generate a random discount payload for costumes
+        $generateDiscount = function (int $price) {
+            $chance = rand(1, 3);
+            if ($chance === 1) { // 33% chance of a percentage discount
+                $value = rand(10, 30);
+                return [
+                    'discount_value' => $value,
+                    'discount_type' => 'percentage',
+                    'is_discount_active' => true,
+                ];
+            } elseif ($chance === 2) { // 33% chance of a fixed discount
+                $value = rand(10000, 25000);
+                return [
+                    'discount_value' => $value,
+                    'discount_type' => 'fixed',
+                    'is_discount_active' => true,
+                ];
+            }
+            return [
+                'discount_value' => null,
+                'discount_type' => null,
+                'is_discount_active' => false,
+            ];
+        };
+
         // --- 1. SETUP ROLES AND BASE USERS ---
         Role::firstOrCreate(['name' => 'owner']);
         Role::firstOrCreate(['name' => 'admin']);
@@ -30,26 +60,33 @@ class DatabaseSeeder extends Seeder
         ];
 
         User::firstOrCreate(['email' => 'owner@starium.test'], [
-            'name' => 'Owner Boss', // Renamed for clarity, since they are the owner now
+            'name' => 'Owner Boss',
             'password' => bcrypt('password'),
             'profile_picture' => $FILE_PATHS['owner_avatar'],
-        ])->assignRole('owner'); // <--- NOW THEY ARE THE OWNER!
+            'phone_number' => '0832-5412-996',
+            'address' => 'Milky Way Sector 2',
+        ])->assignRole('owner');
 
         User::firstOrCreate(['email' => 'admin@starium.test'], [
             'name' => 'Admin Boss',
             'password' => bcrypt('password'),
             'profile_picture' => $FILE_PATHS['admin_avatar'],
+            'phone_number' => '0899-2154-6544',
+            'address' => 'Centarion A-3',
         ])->assignRole('admin');
 
         $user = User::firstOrCreate(['email' => 'user@starium.test'], [
             'name' => 'Regular User',
             'password' => bcrypt('password'),
             'profile_picture' => $FILE_PATHS['user_avatar'],
+            'phone_number' => '0821-4477-2121',
+            'address' => 'Sagitarius A',
         ])->assignRole('user');
 
 
-        // --- 2. CREATE MULTIPLE RENTER USERS & STORES ---
+        // --- 2. CREATE MULTIPLE RENTER USERS & STORES (APPROVED COSTUMES) ---
         $rentersData = [
+            // ... (rentersData array remains unchanged in definition)
             [
                 'user' => [
                     'name' => 'Captain Cosmic',
@@ -92,7 +129,7 @@ class DatabaseSeeder extends Seeder
                     ['name' => 'Genshin Impact (Focalors)', 'series' => 'Genshin Impact', 'price' => 85000, 'tags' => ['Game', 'Focalors', 'Fantasy']],
                     ['name' => 'Witcher Geralt Armor', 'series' => 'The Witcher', 'price' => 90000, 'tags' => ['Game', 'Geralt', 'Fantasy']],
                     ['name' => 'Cinderella Ball Gown', 'series' => 'Cinderella', 'price' => 80000, 'tags' => ['Movie', 'Cinderella', 'Princess']],
-                    ['name' => 'T-Rex Kigurumi', 'series' => 'Jurassic Park', 'price' => 45000, 'tags' => ['Other', 'T-Rex', 'Funny']], // Changed series to give it a media context
+                    ['name' => 'T-Rex Kigurumi', 'series' => 'Jurassic Park', 'price' => 45000, 'tags' => ['Other', 'T-Rex', 'Funny']],
                     ['name' => 'Daenerys Targaryen Gown', 'series' => 'Game of Thrones', 'price' => 115000, 'tags' => ['TV', 'Daenerys', 'Fantasy']],
                 ],
             ],
@@ -140,52 +177,66 @@ class DatabaseSeeder extends Seeder
             foreach ($data['costumes'] as $costumeData) {
                 $imageName = 'costumes/' . str_replace([' ', '&', '(', ')'], ['_', '', '', ''], strtolower($costumeData['name'])) . '.jpg';
 
-                Costume::firstOrCreate(
-                    ['name' => $costumeData['name']],
-                    [
-                        'user_id' => $renter->id,
-                        'series' => $costumeData['series'],
-                        'size' => 'M',
-                        'condition' => 'Excellent',
-                        'price_per_day' => $costumeData['price'],
-                        'stock' => 1,
-                        'main_image_path' => $imageName,
-                        'is_approved' => true,
-                        'tags' => $costumeData['tags'],
-                    ]
+                $discountData = $generateDiscount($costumeData['price']); // Generate discount data
+
+                // 1. Create the Costume with random stock and discount
+                $costume = Costume::firstOrCreate(['name' => $costumeData['name']], array_merge([
+                    'user_id' => $renter->id,
+                    'series' => $costumeData['series'],
+                    'size' => 'M',
+                    'condition' => 'Excellent',
+                    'price_per_day' => $costumeData['price'],
+                    'stock' => $randomStock(), // 💥 FIX: Random stock between 5 and 15
+                    'status' => 'approved',
+                    'tags' => $costumeData['tags'],
+                ], $discountData)); // 💥 ADD DISCOUNT DATA HERE
+
+                // 2. Create the main image record
+                CostumeImage::firstOrCreate(
+                    ['costume_id' => $costume->id, 'order' => 0],
+                    ['image_path' => $imageName]
                 );
             }
         }
 
-        // --- 3. CREATE PENDING COSTUMES FOR APPROVAL ---
+        // --- 3. CREATE PENDING COSTUMES FOR APPROVAL (Varied Stock) ---
         $pendingCostumesData = [
-            ['user_id' => 4, 'name' => 'Deadpool Suit', 'series' => 'Marvel', 'price' => 150000, 'tags' => ['Movie', 'Deadpool', 'Anti-Hero']],
-            ['user_id' => 4, 'name' => 'Space Marine Armor', 'series' => 'Warhammer 40k', 'price' => 200000, 'tags' => ['Game', 'Space Marine', 'Armor']],
+            ['user_id' => User::where('email', 'renter1@starium.test')->value('id') ?? 4, 'name' => 'Deadpool Suit', 'series' => 'Marvel', 'price' => 150000, 'tags' => ['Movie', 'Deadpool', 'Anti-Hero']],
+            ['user_id' => User::where('email', 'renter1@starium.test')->value('id') ?? 4, 'name' => 'Space Marine Armor', 'series' => 'Warhammer 40k', 'price' => 200000, 'tags' => ['Game', 'Space Marine', 'Armor']],
 
-            ['user_id' => 5, 'name' => 'Alice in Wonderland Dress', 'series' => 'Disney', 'price' => 70000, 'tags' => ['Movie', 'Alice', 'Fantasy']],
-            ['user_id' => 5, 'name' => 'Belle Ball Gown', 'series' => 'Beauty and the Beast', 'price' => 90000, 'tags' => ['Movie', 'Belle', 'Princess']],
+            ['user_id' => User::where('email', 'renter2@starium.test')->value('id') ?? 5, 'name' => 'Alice in Wonderland Dress', 'series' => 'Disney', 'price' => 70000, 'tags' => ['Movie', 'Alice', 'Fantasy']],
+            ['user_id' => User::where('email', 'renter2@starium.test')->value('id') ?? 5, 'name' => 'Belle Ball Gown', 'series' => 'Beauty and the Beast', 'price' => 90000, 'tags' => ['Movie', 'Belle', 'Princess']],
 
-            ['user_id' => 6, 'name' => 'Ichigo Bankai', 'series' => 'Bleach', 'price' => 110000, 'tags' => ['Anime', 'Ichigo', 'Shonen']],
-            ['user_id' => 6, 'name' => 'Goku Ultra Instinct', 'series' => 'Dragon Ball', 'price' => 130000, 'tags' => ['Anime', 'Goku', 'Shonen']],
+            ['user_id' => User::where('email', 'renter3@starium.test')->value('id') ?? 6, 'name' => 'Ichigo Bankai', 'series' => 'Bleach', 'price' => 110000, 'tags' => ['Anime', 'Ichigo', 'Shonen']],
+            ['user_id' => User::where('email', 'renter3@starium.test')->value('id') ?? 6, 'name' => 'Goku Ultra Instinct', 'series' => 'Dragon Ball', 'price' => 130000, 'tags' => ['Anime', 'Goku', 'Shonen']],
         ];
 
         foreach ($pendingCostumesData as $costumeData) {
             $imageName = 'costumes/' . str_replace([' ', '&', '(', ')'], ['_', '', '', ''], strtolower($costumeData['name'])) . '.jpg';
 
-            Costume::firstOrCreate(['name' => $costumeData['name']], [
+            // 1. Create the Costume with random stock (no discount for pending)
+            $costume = Costume::firstOrCreate(['name' => $costumeData['name']], [
                 'user_id' => $costumeData['user_id'],
                 'series' => $costumeData['series'],
                 'size' => 'M',
                 'condition' => 'New',
                 'price_per_day' => $costumeData['price'],
-                'stock' => 1,
-                'main_image_path' => $imageName,
-                'is_approved' => false,
+                'stock' => $randomStock(), // 💥 FIX: Random stock between 5 and 15
+                'status' => 'pending',
                 'tags' => $costumeData['tags'],
+                'discount_value' => null, // Ensure discount fields are null for pending
+                'discount_type' => null,
+                'is_discount_active' => false,
             ]);
+
+            // 2. Create the main image record
+            CostumeImage::firstOrCreate(
+                ['costume_id' => $costume->id, 'order' => 0],
+                ['image_path' => $imageName]
+            );
         }
 
-        // --- 3. CREATE DUMMY ORDERS ---
+        // --- 4. CREATE DUMMY ORDERS ---
         $statuses = ['waiting', 'confirmed', 'borrowed', 'returned', 'completed', 'rejected'];
         $orderCounter = 1;
         $customer = User::where('email', 'user@starium.test')->first();
@@ -202,7 +253,7 @@ class DatabaseSeeder extends Seeder
                 foreach ($statuses as $status) {
                     $costume = $costumes->get(($orderCounter - 1) % $costumes->count());
 
-                    // Define dates based on status
+                    // Define dates based on status (Unchanged)
                     switch ($status) {
                         case 'completed':
                             $start = Carbon::now()->subMonths(1)->startOfMonth()->subDays(5);
@@ -234,7 +285,10 @@ class DatabaseSeeder extends Seeder
                     }
 
                     $duration = $start->diffInDays($end) + 1;
-                    $totalPrice = $costume->price_per_day * $duration;
+
+                    // Use final_price accessor which handles discounts
+                    $priceToUse = $costume->final_price ?? $costume->price_per_day;
+                    $totalPrice = $priceToUse * $duration;
 
                     Order::firstOrCreate(['order_code' => 'ORD-' . str_pad($orderCounter, 3, '0', STR_PAD_LEFT)], [
                         'costume_id' => $costume->id,
@@ -250,7 +304,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $this->call(BannerSeeder::class); // Assuming you made one
+        $this->call(BannerSeeder::class);
 
         // NEW: Call Permission Seeder before other seeds to ensure roles exist
         $this->call(PermissionSeeder::class);

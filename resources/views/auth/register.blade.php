@@ -15,12 +15,12 @@
                     <label class="inline-flex items-center">
                         <input type="radio" name="role_type" value="user" checked
                             class="rounded dark:bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500" />
-                        <span class="ms-2 text-sm">{{ __('Renter (Customer)') }}</span>
+                        <span class="ms-2 text-sm">{{ __('User (Customer)') }}</span>
                     </label>
                     <label class="inline-flex items-center">
                         <input type="radio" name="role_type" value="renter"
                             class="rounded dark:bg-gray-700 border-gray-600 text-pink-500 focus:ring-pink-500" />
-                        <span class="ms-2 text-sm">{{ __('Provider (Costume Renter)') }}</span>
+                        <span class="ms-2 text-sm">{{ __('Renter (Costume Renter)') }}</span>
                     </label>
                 </div>
             </div>
@@ -54,7 +54,7 @@
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
             </div>
 
-            <div class="pt-4 border-t border-gray-700">
+         {{--    <div class="pt-4 border-t border-gray-700">
                 <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
 
                 <div class="flex items-center space-x-3 mt-1">
@@ -80,7 +80,7 @@
                 </div>
 
                 <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
-            </div>
+            </div>--}}
 
             <div class="flex items-center justify-end mt-4">
                 <a class="underline text-sm text-gray-400 hover:text-white" href="{{ route('login') }}">

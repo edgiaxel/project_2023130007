@@ -8,11 +8,12 @@
     <div class="py-12" style="background-color: #0d0d1f;">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
-            {{-- 1. STORE PROFILE EDIT --}}
+            {{-- 1. STORE PROFILE EDIT (Unchanged) --}}
             <div class="bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 border-t-4 border-pink-500">
                 <h3 class="text-2xl font-bold text-pink-400 mb-6">Store Profile & Details (Owner: {{ $renter->name }})
                 </h3>
 
+                {{-- FORM FOR ADMIN STORE DETAILS UPDATE (Already fixed in previous step to point to admin.stores.update_details) --}}
                 <form method="post" action="{{ route('admin.stores.update_details', $renter->id) }}"
                     enctype="multipart/form-data" class="mt-6 space-y-6">
                     @csrf
@@ -29,7 +30,7 @@
                     {{-- Store Logo --}}
                     <div>
                         <x-input-label for="store_logo" :value="__('Store Logo')" class="text-pink-400" />
-                        <input id="store_logo" name="store_logo" type="file"                
+                        <input id="store_logo" name="store_logo" type="file"     
                             class="block mt-1 w-full text-sm text-gray-200 border-gray-600 rounded-lg cursor-pointer bg-gray-700 focus:outline-none" />
                         <x-input-error class="mt-2" :messages="$errors->get('store_logo')" />
                         @if($renter->store && $renter->store->store_logo_path)
@@ -66,8 +67,8 @@
 
             {{-- 2. COSTUME MANAGEMENT TABLE --}}
             <div class="bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 border-t-4 border-indigo-500">
-                <h3 class="text-2xl font-bold text-indigo-400 mb-6">Costumes Listed by This Store
-                    ({{ $renter->costumes->count() }})</h3>
+                <h3 class="text-2xl font-bold text-indigo-400 mb-6">Costumes Listed by This Store 
+                    ({{ $renter->costumes->count() }})  <a href="{{ route('admin.soft_delete.index') }}" class="ml-4 text-sm text-red-400 hover:text-red-300 font-semibold">(View Trash Bin)</a></h3>
 
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700">
@@ -93,22 +94,21 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center">{{ $costume->orders_count }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($costume->is_approved)
-                                            <span
-                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-700 text-white">Approved</span>
-                                        @else
-                                            <span
-                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-700 text-white">Pending</span>
-                                        @endif
+                                        {{-- 💥 FIX: Display status based on string value --}}
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white 
+                                            @if ($costume->status === 'approved') bg-green-700 
+                                            @elseif ($costume->status === 'rejected') bg-red-700 
+                                            @else bg-yellow-700 @endif">
+                                            {{ strtoupper($costume->status) }}
+                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        {{-- FIX: Link to Renter's Edit form (Admin/Owner can access if they have
-                                        'costume:edit-all') --}}
+                                        {{-- FIX: Link to Renter's Edit form (Admin/Owner can access if they have 'costume:edit-all') --}}
                                         <a href="{{ route('renter.costumes.edit', $costume->id) }}"
                                             class="text-indigo-400 hover:text-indigo-600">Edit</a>
 
-                                        {{-- FIX: Implement SOFT DELETE form (Admin/Owner can access if they have
-                                        'costume:delete-all') --}}
+                                        {{-- FIX: Implement SOFT DELETE form (Admin/Owner can access if they have 'costume:delete-all') --}}
                                         <form action="{{ route('renter.costumes.delete', $costume->id) }}" method="POST"
                                             class="inline"
                                             onsubmit="return confirm('WARNING: Are you absolutely sure you want to SOFT DELETE this costume ({{ $costume->name }})? This is an Admin action.');">

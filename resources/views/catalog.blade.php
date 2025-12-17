@@ -27,8 +27,7 @@
     {{-- Main Content Starts --}}
     <div class="bg-gray-900 min-h-screen">
         <section id="sale-banner" class="max-w-7xl mx-auto sm:px-6 lg:px-8 py-6">
-            <h3 class="text-2xl font-bold text-yellow-400 mb-4">🚀 FLASH SALE ACTIVE: {{ $DISCOUNT_RATE * 100 }}% OFF
-                ALL COSTUMES!</h3>
+            <h3 class="text-2xl font-bold text-yellow-400 mb-4">🚀 HIGH QUALITY RENTAL COSTUMES!</h3>
 
             <div x-data="{ current: 1, total: {{ $banners->count() }} }"
                 x-init="setInterval(() => { current = (current % total) + 1 }, 5000)"
@@ -40,7 +39,6 @@
                         @php
                             $imageUrl = $banner->image_path ? asset('storage/' . $banner->image_path) : asset('default_images/default_costume.png');
                         @endphp
-
                         <div x-show="current === {{ $banner->order }}" x-transition:enter.opacity x-transition:leave.opacity
                             class="absolute inset-0 w-full h-full bg-cover bg-center flex items-center justify-center text-4xl text-white font-extrabold transition duration-700"
                             style="background-image: url('{{ $imageUrl }}'); background-color: #2D3748; background-size: cover; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
@@ -99,8 +97,10 @@
 
                                 {{-- IMAGE DISPLAY & FALLBACK LOGIC --}}
                                 @php
-                                    $costumeImageUrl = $costume->main_image_path
-                                        ? asset('storage/' . $costume->main_image_path)
+                                    // Use the first image in the collection (order 0)
+                                    $mainImage = $costume->images->sortBy('order')->first();
+                                    $costumeImageUrl = $mainImage
+                                        ? asset('storage/' . $mainImage->image_path)
                                         : asset('default_images/default_costume.png');
                                 @endphp
 
@@ -141,12 +141,20 @@
 
                                     {{-- PRICE DISPLAY (WITH DISCOUNT) --}}
                                     <p class="text-lg font-semibold text-green-400 mt-2 flex flex-col">
-                                        <span class="text-xs text-gray-500 line-through">
-                                            Rp {{ number_format($costume->original_price, 0, ',', '.') }} / Day
-                                        </span>
-                                        <span class="text-xl font-extrabold text-indigo-400">
-                                            Rp {{ number_format($costume->discounted_price, 0, ',', '.') }} / Day
-                                        </span>
+                                        @if ($costume->is_on_sale)
+                                            <span class="text-xs text-gray-500 line-through">
+                                                {{-- 💥 FIX: Use price_per_day for the line-through original price --}}
+                                                Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} / Day
+                                            </span>
+                                            <span class="text-xl font-extrabold text-indigo-400">
+                                                {{-- 💥 FIX: Use final_price (the calculated discounted price) --}}
+                                                Rp {{ number_format($costume->final_price, 0, ',', '.') }} / Day
+                                            </span>
+                                        @else
+                                            <span class="text-xl font-extrabold text-indigo-400">
+                                                Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} / Day
+                                            </span>
+                                        @endif
                                     </p>
 
                                     {{-- Link to Costume Detail Page --}}
@@ -159,7 +167,8 @@
                         @empty
                             @if (!request('search'))
                                 <p class="col-span-4 text-center text-gray-400 text-lg py-10">No cosmic threads categorized as
-                                    {{ $category }} yet.</p>
+                                    {{ $category }} yet.
+                                </p>
                             @endif
                         @endforelse
                     </div>
@@ -219,8 +228,10 @@
 
                             {{-- IMAGE DISPLAY & FALLBACK LOGIC --}}
                             @php
-                                $costumeImageUrl = $costume->main_image_path
-                                    ? asset('storage/' . $costume->main_image_path)
+                                // Use the first image in the collection (order 0)
+                                $mainImage = $costume->images->sortBy('order')->first();
+                                $costumeImageUrl = $mainImage
+                                    ? asset('storage/' . $mainImage->image_path)
                                     : asset('default_images/default_costume.png');
                             @endphp
 
@@ -261,12 +272,20 @@
 
                                 {{-- PRICE DISPLAY (WITH DISCOUNT) --}}
                                 <p class="text-lg font-semibold text-green-400 mt-2 flex flex-col">
-                                    <span class="text-xs text-gray-500 line-through">
-                                        Rp {{ number_format($costume->original_price, 0, ',', '.') }} / Day
-                                    </span>
-                                    <span class="text-xl font-extrabold text-indigo-400">
-                                        Rp {{ number_format($costume->discounted_price, 0, ',', '.') }} / Day
-                                    </span>
+                                    @if ($costume->is_on_sale)
+                                        <span class="text-xs text-gray-500 line-through">
+                                            {{-- 💥 FIX: Use price_per_day for the line-through original price --}}
+                                            Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} / Day
+                                        </span>
+                                        <span class="text-xl font-extrabold text-indigo-400">
+                                            {{-- 💥 FIX: Use final_price (the calculated discounted price) --}}
+                                            Rp {{ number_format($costume->final_price, 0, ',', '.') }} / Day
+                                        </span>
+                                    @else
+                                        <span class="text-xl font-extrabold text-indigo-400">
+                                            Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} / Day
+                                        </span>
+                                    @endif
                                 </p>
 
                                 {{-- Link to Costume Detail Page --}}
@@ -285,7 +304,8 @@
                 {{-- Pagination Links for All Products --}}
                 @if ($costumesPaginated->hasPages())
                     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mt-6 pb-3">
-                        {{ $costumesPaginated->links() }}
+                        {{-- 💥 FIX: Append the fragment anchor to links --}}
+                        {{ $costumesPaginated->fragment('all-products')->links() }}
                     </div>
                 @endif
             </div>

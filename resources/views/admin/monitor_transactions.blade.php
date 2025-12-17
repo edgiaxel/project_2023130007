@@ -12,7 +12,7 @@
             filterStatus: '',
             orders: {{ json_encode($orders) }}, 
 
-            get filteredOrders() {
+           get filteredOrders() {
                 // 1. Filter by Status
                 let filtered = this.orders.filter(order => 
                     !this.filterStatus || order.status === this.filterStatus
@@ -44,9 +44,8 @@
                     const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
                     return this.sortDirection === 'asc' ? comparison : -comparison;
                 });
-            },
+            },  
             
-            // Function to change sorting
             sort(column) {
                 if (this.sortColumn === column) {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -73,10 +72,8 @@
                         <option value="returned">RETURNED</option>
                         <option value="completed">COMPLETED</option>
                         <option value="rejected">REJECTED</option>
-
                     </select>
-                    <a :href="`{{ route('order.detail', '') }}/${order.id}`" target="_blank"
-                        class="text-sm text-indigo-400 hover:text-indigo-600 mt-1 block">View Details</a>
+
                 </div>
 
                 <div class="overflow-x-auto">
@@ -99,7 +96,7 @@
                         <tbody class="bg-gray-800 divide-y divide-gray-700 text-gray-200">
                             <template x-for="order in filteredOrders" :key="order.order_code">
                                 <tr :class="{'bg-gray-900': order.status === 'borrowed'}">
-                                    <td class="px-6 py-4 whitespace-nowrap" x-text="order.order_code"></td>
+                                    <td class="px-8 py-4 whitespace-nowrap" x-text="order.order_code"></td>
                                     <td class="px-6 py-4 whitespace-nowrap" x-text="order.costume?.name || 'N/A'"></td>
                                     <td class="px-6 py-4 whitespace-nowrap"
                                         x-text="order.costume?.renter?.name || 'N/A'"></td>
@@ -108,40 +105,58 @@
                                         Rp <span x-text="Number(order.total_price).toLocaleString('id-ID')"></span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap font-semibold" :class="{
-                'text-yellow-400': order.status === 'waiting',
-                'text-indigo-400': order.status === 'confirmed',
-                'text-red-400': order.status === 'borrowed',
-                'text-green-400': order.status === 'completed',
-                'text-gray-400': order.status === 'rejected' || order.status === 'returned',
-            }" x-text="order.status.toUpperCase()">
+                                        'text-yellow-400': order.status === 'waiting',
+                                        'text-indigo-400': order.status === 'confirmed',
+                                        'text-red-400': order.status === 'borrowed',
+                                        'text-green-400': order.status === 'completed',
+                                        'text-gray-400': order.status === 'rejected' || order.status === 'returned',
+                                    }" x-text="order.status.toUpperCase()">
                                     </td>
 
-                                    {{-- ADDED ACTIONS COLUMN (Status Dropdown) --}}
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    {{-- ADDED ACTIONS COLUMN (Status Dropdown + View Link) --}}
+                                    <td class="px-6 py-4 whitespace-nowrap space-y-1">
                                         <select @change="
-                if ($event.target.value === 'reject') {
-                    // Handle REJECT separately if needed, but for now we route status updates through the generic one
-                    var url = `{{ route('orders.reject', '') }}/${order.id}`;
-                    var bodyData = {};
-                } else if ($event.target.value) {
-                    var url = `{{ route('orders.update.status', '') }}/${order.id}`;
-                    var bodyData = { new_status: $event.target.value };
-                }
+                                                let baseUrl;
+                                                let newStatus = $event.target.value;
+                                                let orderId = order.id; // 1. Get the current order ID from Alpine loop
 
-                if ($event.target.value) {
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify(bodyData)
-                    }).then(response => {
-                        // Reload page to show status update and stock change
-                        window.location.reload(); 
-                    });
-                }" class="bg-gray-700 border-gray-600 text-white text-xs rounded-md">
+                                                if (newStatus === 'reject') {
+                                                    baseUrl = `{{ route('renter.orders.reject', ['order_id' => '__ID__']) }}`;
+                                                } else if (newStatus) {
+                                                    baseUrl = `{{ route('renter.orders.update.status', ['order_id' => '__ID__']) }}`;
+                                                }
 
+                                                if (newStatus) {
+                                                    let url = baseUrl.replace('__ID__', orderId); // 2. Build final URL
+                                                    
+                                                    let bodyData = {
+                                                        _token: '{{ csrf_token() }}', // 3. CSRF Token
+                                                        new_status: newStatus 
+                                                    };
+
+                                                    if (newStatus === 'reject') {
+                                                        // Rejects use their own dedicated controller action, no need for new_status in body
+                                                        delete bodyData.new_status; 
+                                                    }
+
+                                                    fetch(url, {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                                        },
+                                                        body: JSON.stringify(bodyData)
+                                                    }).then(response => {
+                                                        // Check for non-200 responses before reloading
+                                                        if (response.ok) {
+                                                            window.location.reload(); // Refresh on success
+                                                        } else {
+                                                            alert('Status update failed! Check permissions or order status history.');
+                                                        }
+                                                    });
+                                                }" class="bg-gray-700 border-gray-600 text-white text-xs rounded-md w-full">
+
+                                            {{-- Options remain unchanged, relying on Alpine loop data --}}
                                             <option value="">CHANGE STATUS</option>
                                             <option value="confirmed" :disabled="order.status !== 'waiting'"
                                                 :selected="order.status === 'confirmed'">Confirmed</option>
@@ -152,17 +167,20 @@
                                                 :selected="order.status === 'returned'">Returned (Check-in)</option>
                                             <option value="completed" :disabled="order.status !== 'returned'"
                                                 :selected="order.status === 'completed'">Completed (Finalized)</option>
-                                            <option value="waiting" :disabled="order.status !== 'rejected'"
-                                                :selected="order.status === 'waiting'">Waiting (Reset)</option>
                                             <option value="reject" :disabled="order.status !== 'waiting'">REJECT
                                                 (Permanent)</option>
                                         </select>
+
+                                        <a :href="`{{ route('order.detail', ['order_id' => '__ID__']) }}`.replace('__ID__', order.id)"
+                                            target="" class="text-sm text-indigo-400 hover:text-indigo-600 block mt-1">
+                                            View Details
+                                        </a>
                                     </td>
                                 </tr>
                             </template>
 
                             <tr x-show="filteredOrders.length === 0">
-                                <td colspan="6" class="px-6 py-4 text-center text-gray-400">
+                                <td colspan="7" class="px-6 py-4 text-center text-gray-400">
                                     No transactions match the current filter or criteria.
                                 </td>
                             </tr>

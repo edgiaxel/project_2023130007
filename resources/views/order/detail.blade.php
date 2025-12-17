@@ -13,7 +13,8 @@
         'borrowed' => 'border-red-500',
         'returned' => 'border-gray-500',
         'completed' => 'border-green-500',
-        'rejected' => 'border-red-800'
+        'rejected' => 'border-red-800',
+        'overdue' => 'border-yellow-800', // 💥 NEW
     ][$order->status] ?? 'border-gray-600';
 @endphp
 
@@ -83,7 +84,8 @@
                         <p>Start: {{ $order->start_date->format('Y-m-d') }}</p>
                         <p>End: {{ $order->end_date->format('Y-m-d') }}</p>
                         <p class="text-sm text-gray-500 mt-1">Duration:
-                            {{ $order->start_date->diffInDays($order->end_date) + 1 }} days</p>
+                            {{ $order->start_date->diffInDays($order->end_date) + 1 }} days
+                        </p>
                     </div>
                     <div class="col-span-2">
                         <p class="text-lg font-bold text-green-400 mb-2">Financial Breakdown</p>
@@ -100,31 +102,31 @@
                         <p class="text-lg font-bold text-red-400 mb-3">Update Order Status</p>
 
                         <form x-data="{ newStatus: '' }" @submit.prevent="
-                                    let url;
-                                    let body = {};
+                                        let url;
+                                        let body = {};
 
-                                    if (newStatus === 'reject') {
-                                        url = '{{ route('renter.orders.reject', $order->id) }}';
-                                    } else {
-                                        url = '{{ route('renter.orders.update.status', $order->id) }}';
-                                        body.new_status = newStatus;
-                                    }
-
-                                    fetch(url, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                        },
-                                        body: JSON.stringify(body)
-                                    }).then(response => {
-                                        if (response.ok) {
-                                            window.location.reload(); // Reload to see the status change
+                                        if (newStatus === 'reject') {
+                                            url = '{{ route('renter.orders.reject', $order->id) }}';
                                         } else {
-                                            alert('Error updating status. Check console.');
+                                            url = '{{ route('renter.orders.update.status', $order->id) }}';
+                                            body.new_status = newStatus;
                                         }
-                                    });
-                                  " class="flex space-x-4 items-center">
+
+                                        fetch(url, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                            },
+                                            body: JSON.stringify(body)
+                                        }).then(response => {
+                                            if (response.ok) {
+                                                window.location.reload(); // Reload to see the status change
+                                            } else {
+                                                alert('Error updating status. Check console.');
+                                            }
+                                        });
+                                      " class="flex space-x-4 items-center">
 
                             <select x-model="newStatus" required
                                 class="bg-gray-700 border-red-500 rounded-md text-white text-sm py-2 px-3">

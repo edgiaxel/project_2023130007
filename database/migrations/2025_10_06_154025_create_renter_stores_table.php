@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->string('store_name')->unique();
             $table->text('description')->nullable();
             $table->string('store_logo_path')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }

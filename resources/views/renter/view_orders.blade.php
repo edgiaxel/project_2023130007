@@ -3,16 +3,13 @@
     use Illuminate\Support\Facades\Auth;
 
     $renterCostumes = Auth::user()->costumes->pluck('id');
+    // 💥 FIX: Include 'overdue' in the query fetch
+    $orders = Order::whereIn('costume_id', $renterCostumes)->whereIn('status', ['waiting', 'confirmed', 'borrowed', 'returned', 'completed', 'rejected', 'overdue'])->with('user', 'costume')->latest()->get();
 
-    $orders = Order::whereIn('costume_id', $renterCostumes)
-        ->with('user', 'costume')
-        ->latest()
-        ->get();
-
+    // Divide into categories
     $pendingOrders = $orders->where('status', 'waiting');
-    // FIX 1: INCLUDE 'returned' in Ongoing Rentals for final check
-    $ongoingRentals = $orders->whereIn('status', ['confirmed', 'borrowed', 'returned']);
-    // FIX 2: Only 'completed' and 'rejected' are truly past/archived
+    // FIX 1: Include 'overdue' in Ongoing/Active Rentals
+    $ongoingRentals = $orders->whereIn('status', ['confirmed', 'borrowed', 'returned', 'overdue']);
     $pastOrders = $orders->whereIn('status', ['completed', 'rejected']);
 @endphp
 
@@ -59,7 +56,7 @@
                                     class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Reject</button>
                             </form>
 
-                            <a href="{{ route('costume.detail', $order->costume_id) }}" target="_blank"
+                            <a href="{{ route('costume.detail', $order->costume_id) }}" target=""
                                 class="text-indigo-400 hover:text-indigo-600 text-sm">View Costume</a>
                         </div>
                     </div>
@@ -73,7 +70,13 @@
             <div class="space-y-4">
                 @forelse ($ongoingRentals as $order)
                     @php
-                        $color = $order->status === 'confirmed' ? 'border-indigo-500' : 'border-red-500';
+                        // 💥 FIX: Add color and text for overdue status
+                        $color = match ($order->status) {
+                            'confirmed' => 'border-indigo-500',
+                            'borrowed' => 'border-red-500',
+                            'overdue' => 'border-yellow-800', // Highlight overdue in dark yellow/brown
+                            default => 'border-gray-500',
+                        };
                         $statusText = strtoupper($order->status);
                     @endphp
                     <div class="bg-gray-800 p-4 rounded-lg border border-yellow-500 shadow-lg border-l-4 {{ $color }}">
@@ -87,7 +90,10 @@
                             {{ $order->end_date->format('d M') }} ({{ $order->start_date->diffInDays($order->end_date) }}
                             Days)
                         </p>
-                        <p class="text-2xl font-extrabold text-indigo-400 mt-3">STATUS: {{ $statusText }}</p>
+                        <p
+                            class="text-2xl font-extrabold @if($order->status == 'overdue') text-yellow-500 @else text-indigo-400 @endif mt-3">
+                            STATUS: {{ $statusText }}
+                        </p>
                         <div class="mt-3 space-x-2">
 
                             {{-- 💥 NEW: MARK AS COMPLETED BUTTON (Only appears after RETURNED) --}}
@@ -104,14 +110,15 @@
                             @endif
 
                             {{-- MARK AS RETURNED FORM (Only show if borrowed/confirmed) --}}
-                            @if ($order->status === 'borrowed' || $order->status === 'confirmed')
+                            @if (in_array($order->status, ['borrowed', 'confirmed', 'overdue']))
                                 <form action="{{ route('renter.orders.update.status', $order->id) }}" method="POST"
                                     class="inline">
                                     @csrf
                                     <input type="hidden" name="new_status" value="returned">
                                     <button type="submit"
-                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">Mark
-                                        as Returned</button>
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">
+                                        Mark as Returned
+                                    </button>
                                 </form>
                             @endif
 
@@ -127,7 +134,7 @@
                                 </form>
                             @endif
 
-                            <a href="{{ route('order.detail', $order->id) }}" target="_blank"
+                            <a href="{{ route('order.detail', $order->id) }}" target=""
                                 class="text-indigo-400 hover:text-indigo-600 text-sm">View Details</a>
                         </div>
                     </div>

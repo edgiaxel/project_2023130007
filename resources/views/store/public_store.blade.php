@@ -3,10 +3,12 @@
     use App\Models\Costume;
     use Illuminate\Support\Facades\Route;
 
-    $renterId = Route::current()->parameter('user_id') ?? 1; 
+    $renterId = Route::current()->parameter('user_id') ?? 1;
     $renterUser = User::with('store')->find($renterId);
     $store = $renterUser->store ?? null;
-    $costumes = $renterUser ? $renterUser->costumes()->where('is_approved', true)->get() : collect();
+
+    // 💥 FIX: Query by the new 'status' column and string 'approved'
+    $costumes = $renterUser ? $renterUser->costumes()->where('status', 'approved')->get() : collect();
 
     $storeName = $store->store_name ?? 'Starium Shop';
     $storeDesc = $store->description ?? 'No description provided.';
@@ -35,7 +37,7 @@
                         $logoPath = $store->store_logo_path ?? null;
                         $logoUrl = $logoPath
                             ? asset('storage/' . $logoPath)
-                            : asset('default_images/default_avatar.png'); 
+                            : asset('default_images/default_avatar.png');
 
                         $fallbackInitial = strtoupper(substr($storeName, 0, 1));
                     @endphp
@@ -67,8 +69,10 @@
                         class="bg-gray-800 border border-indigo-700 shadow-xl rounded-lg overflow-hidden transition transform hover:scale-[1.02] duration-300">
 
                         @php
-                            $costumeImageUrl = $costume->main_image_path
-                                ? asset('storage/' . $costume->main_image_path)
+                            // FIX: Use the first image in the collection (order 0) via the relationship
+                            $mainImage = $costume->images->sortBy('order')->first();
+                            $costumeImageUrl = $mainImage
+                                ? asset('storage/' . $mainImage->image_path)
                                 : asset('default_images/default_costume.png');
                         @endphp
 

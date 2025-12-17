@@ -15,35 +15,35 @@
             sortDirection: 'asc',
             filterStatus: '',
             costumes: {{ json_encode($costumes) }}, 
-
+            
             get filteredCostumes() {
                 // 1. Filter Logic
                 let filtered = this.costumes.filter(costume => 
                     !this.filterStatus || 
-                    (this.filterStatus === 'live' && costume.is_approved) ||
-                    (this.filterStatus === 'pending' && !costume.is_approved)
+                    // 💥 FIX: ADD 'rejected' status filter
+                    (this.filterStatus === 'live' && costume.status === 'approved') ||
+                    (this.filterStatus === 'pending' && costume.status === 'pending') ||
+                    (this.filterStatus === 'rejected' && costume.status === 'rejected')
                 );
 
-                // 2. Sort Logic
+                // 2. Sort Logic (Only changing the column name for status)
                 return filtered.sort((a, b) => {
                     let aVal = a[this.sortColumn] || '';
                     let bVal = b[this.sortColumn] || '';
 
-                    // Convert numbers/booleans for correct sorting
+                    // Convert numbers/strings for correct sorting
                     if (this.sortColumn === 'stock' || this.sortColumn === 'price_per_day') {
                         aVal = parseFloat(aVal);
                         bVal = parseFloat(bVal);
-                    } else if (this.sortColumn === 'is_approved') {
-                        // Sort boolean values (false/pending first)
-                        aVal = a.is_approved;
-                        bVal = b.is_approved;
+                    } else if (this.sortColumn === 'status') {
+                        aVal = a.status;
+                        bVal = b.status;
                     }
                     
                     const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
                     return this.sortDirection === 'asc' ? comparison : -comparison;
                 });
             },
-            
             sort(column) {
                 if (this.sortColumn === column) {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -65,6 +65,8 @@
                         <option value="">ALL STATUSES</option>
                         <option value="live">LIVE (Approved)</option>
                         <option value="pending">PENDING ADMIN</option>
+                        {{-- 💥 FIX: ADD REJECTED OPTION --}}
+                        <option value="rejected">REJECTED</option>
                     </select>
                 </div>
 
@@ -72,7 +74,7 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                @foreach (['Costume Name' => 'name', 'Series' => 'series', 'Stock' => 'stock', 'Price/Day' => 'price_per_day', 'Status' => 'is_approved'] as $label => $column)
+                                @foreach (['Costume Name' => 'name', 'Series' => 'series', 'Stock' => 'stock', 'Price/Day' => 'price_per_day', 'Status' => 'status'] as $label => $column)
                                     <th @click="sort('{{ $column }}')"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition">
                                         {{ $label }}
@@ -94,22 +96,25 @@
                                         x-text="costume.stock"></td>
                                     <td class="px-6 py-4 whitespace-nowrap">Rp <span
                                             x-text="Number(costume.price_per_day).toLocaleString('id-ID')"></span></td>
+
+                                    {{-- FIX Status Display --}}
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span
                                             class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white"
-                                            :class="{'bg-green-700': costume.is_approved, 'bg-yellow-700': !costume.is_approved}"
-                                            x-text="costume.is_approved ? 'LIVE' : 'PENDING ADMIN'">
+                                            :class="{
+                                                // Coloring based on status string
+                                                'bg-green-700': costume.status === 'approved', 
+                                                'bg-yellow-700': costume.status === 'pending', 
+                                                'bg-red-700': costume.status === 'rejected'
+                                            }" x-text="costume.status.toUpperCase()">
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                         {{-- 🤬 EDIT LINK FIX: Force the path structure and use Alpine for ID injection
                                         --}}
                                         @php
-                                            // Generate the base URL structure using a dummy placeholder ID (e.g., /costumes/XX/edit)
-                                            // We use 'XX' instead of '0' for cleaner replacement later.
                                             $editUrlBase = route('renter.costumes.edit', ['costume_id' => 'XX']); 
                                         @endphp
-
                                         <a :href="'{{ $editUrlBase }}'.replace('XX', costume.id)"
                                             class="text-indigo-400 hover:text-indigo-600">Edit</a>
 

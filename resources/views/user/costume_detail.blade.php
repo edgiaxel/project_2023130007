@@ -2,15 +2,11 @@
     use App\Models\Costume;
     use Illuminate\Support\Facades\Route;
 
-    $DISCOUNT_RATE = 0.15;
-
     $costumeId = Route::current()->parameter('id');
 
-    $costume = Costume::with('renter.store')->find($costumeId);
+    $costume = Costume::with(['renter.store', 'images'])->find($costumeId);
+    $images = $costume->images ?? collect();
 
-    $costume->is_on_sale = true;
-    $costume->original_price = $costume->price_per_day;
-    $costume->discounted_price = $costume->original_price * (1 - $DISCOUNT_RATE);
 
     if (!$costume) {
         $costume = (object) [
@@ -26,7 +22,8 @@
             'original_price' => 0,
         ];
     }
-
+    $isApproved = $costume && $costume->status === 'approved'; // 💥 NEW LINE
+    $statusText = $costume->status ?? 'unknown'; // 💥 NEW LINE
     $tags = $costume->tags ?? ['Error'];
     $costumeName = $costume->name;
     $renterStoreName = $costume->renter->store->store_name ?? 'Unknown Store';
@@ -45,21 +42,55 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div
                 class="grid grid-cols-1 lg:grid-cols-3 gap-8 bg-gray-800 border border-indigo-700 p-6 rounded-lg shadow-xl">
-                {{-- Image Gallery (Dummy) --}}
-                <div class="lg:col-span-2">
+                {{-- Image Gallery (Multi-Image Support) --}}
+                {{-- Image Gallery (Multi-Image Slider) --}}
+                <div class="lg:col-span-2" x-data="{ currentImage: 1, totalImages: {{ $images->count() }}, 
+                                    images: {{ json_encode($images->sortBy('order')->pluck('image_path')) }} }">
+
                     @php
-                        $costumeImagePath = $costume->main_image_path
-                            ? asset('storage/' . $costume->main_image_path)
-                            : asset('default_images/default_costume.png');
+                        // Get the sorted list of image paths for Alpine JS to use
+                        $sortedImages = $images->sortBy('order')->pluck('image_path')->map(fn($path) => asset('storage/' . $path));
                     @endphp
-
+                    {{-- Main Image Slider Area --}}
                     <div
-                        class="bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 text-2xl font-bold overflow-hidden">
+                        class="relative w-full mb-4 bg-gray-700 rounded-lg overflow-hidden border border-indigo-500 max-h-[500px]">
 
-                        <img src="{{ $costumeImagePath }}" alt="{{ $costumeName }} Costume" class="h-full object-cover"
-                            onerror="this.onerror=null; this.src='{{ asset('default_images/default_costume.png') }}';">
+                        @forelse ($sortedImages as $index => $path)
+                            <img x-show="currentImage === {{ $index + 1 }}" x-transition:enter.opacity
+                                x-transition:leave.opacity src="{{ $path }}" alt="{{ $costumeName }} Image {{ $index + 1 }}"
+                                class="w-full object-cover h-full"
+                                onerror="this.onerror=null; this.src='{{ asset('default_images/default_costume.png') }}';">
+                        @empty
+                            <img src="{{ asset('default_images/default_costume.png') }}" alt="No Image"
+                                class="w-full object-cover max-h-[500px]">
+                        @endforelse
 
+                        {{-- Navigation Arrows --}}
+                        @if ($images->count() > 1)
+                            <button @click="currentImage = currentImage > 1 ? currentImage - 1 : totalImages"
+                                class="absolute top-1/2 left-4 transform -translate-y-1/2 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition z-20">
+                                &lt;
+                            </button>
+                            <button @click="currentImage = currentImage < totalImages ? currentImage + 1 : 1"
+                                class="absolute top-1/2 right-4 transform -translate-y-1/2 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition z-20">
+                                &gt;
+                            </button>
+                        @endif
                     </div>
+
+                    {{-- Thumbnail Row (To select image) --}}
+                    @if ($images->count() > 1)
+                        <div class="flex space-x-3 overflow-x-auto p-2 bg-gray-700 rounded-lg">
+                            @foreach ($sortedImages as $index => $path)
+                                <div @click="currentImage = {{ $index + 1 }}"
+                                    class="w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border cursor-pointer hover:border-pink-500 transition"
+                                    :class="{'border-pink-500 ring-2 ring-pink-500': currentImage === {{ $index + 1 }}, 'border-gray-600': currentImage !== {{ $index + 1 }} }">
+                                    <img src="{{ $path }}" alt="Thumbnail {{ $index + 1 }}" class="w-full h-full object-cover"
+                                        onerror="this.onerror=null; this.src='{{ asset('default_images/default_costume.png') }}';">
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Details and Order Box --}}
@@ -67,13 +98,18 @@
                     <h2 class="text-4xl font-bold text-green-400 mt-4 flex flex-col">
                         @if ($costume->is_on_sale)
                             <span class="text-lg font-semibold text-gray-500 line-through">
-                                Rp {{ number_format($costume->original_price, 0, ',', '.') }} / Day
+                                Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} / Day
+                            </span>
+                            <span class="text-4xl font-extrabold text-indigo-400">
+                                Rp {{ number_format($costume->final_price, 0, ',', '.') }} <span
+                                    class="text-xl text-gray-400">/ Day</span>
+                            </span>
+                        @else
+                            <span class="text-4xl font-extrabold text-indigo-400">
+                                Rp {{ number_format($costume->price_per_day, 0, ',', '.') }} <span
+                                    class="text-xl text-gray-400">/ Day</span>
                             </span>
                         @endif
-                        <span class="text-4xl font-extrabold text-indigo-400">
-                            Rp {{ number_format($costume->discounted_price, 0, ',', '.') }} <span
-                                class="text-xl text-gray-400">/ Day</span>
-                        </span>
                     </h2>
 
                     <div class="mt-6 p-4 bg-gray-700 rounded-lg border-l-4 border-pink-500 relative">
@@ -93,15 +129,28 @@
                         </p>
                     </div>
 
+                    <div
+                        class="mt-6 p-4 bg-gray-700 rounded-lg border-l-4 @if($isApproved) border-green-500 @else border-red-500 @endif">
+                        <p class="text-lg font-bold text-white mb-2">Costume Status:</p>
+                        <p class="text-3xl font-extrabold @if($isApproved) text-green-400 @else text-red-400 @endif">
+                            {{ strtoupper($statusText) }}
+                        </p>
+                    </div>
+
                     <div class="mt-6 space-y-3">
-                        @if ($costume->stock > 0)
+                        @if ($costume->stock > 0 && $isApproved)
                             <p class="text-sm text-green-400 font-bold">
                                 Stock Available: {{ $costume->stock }} units!
                             </p>
-                            <a href="{{ route('order.place', ['costume_id' => $costume->id]) }}"
+                            <a href="{{ route('order.place', ['costume_id' => $costume->id]) }}"  
                                 class="w-full block text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg text-lg transition duration-300">
                                 Rent Now!
                             </a>
+                        @elseif (!$isApproved)
+                            <p class="text-lg text-red-500 font-extrabold text-center border border-red-500 p-3 rounded-lg">
+                                RENTING DISABLED: Costume is not yet approved or is
+                                rejected.
+                            </p>
                         @else
                             <p class="text-lg text-red-500 font-extrabold text-center border border-red-500 p-3 rounded-lg">
                                 ALL STOCK RENTED OUT!

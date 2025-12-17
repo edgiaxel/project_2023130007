@@ -58,6 +58,10 @@
                                 class="text-pink-300 hover:text-white">
                                 {{ __('Renter Panel') }}
                             </x-nav-link>
+                            <x-nav-link :href="route('user.orders')" :active="request()->routeIs('user.orders')"
+                                class="text-indigo-300 hover:text-white">
+                                {{ __('My Orders') }}
+                            </x-nav-link>
                         @elseif ($isUser)
                             <x-nav-link :href="route('user.orders')" :active="request()->routeIs('user.orders')"
                                 class="text-indigo-300 hover:text-white">

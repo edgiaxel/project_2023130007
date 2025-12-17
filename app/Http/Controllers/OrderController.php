@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;   
+use Illuminate\View\View;
 
 class OrderController extends Controller
 {
@@ -23,18 +23,21 @@ class OrderController extends Controller
 
     public function storeOrder(Request $request): RedirectResponse
     {
-        // 1. Validation.
         $request->validate([
             'costume_id' => 'required|exists:costumes,id',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
-        // 2. Fetch the Costume
         $costume = Costume::findOrFail($request->costume_id);
 
+        // 💥 NEW: Renter Validation Check
+        if ($costume->user_id === Auth::id()) {
+            return Redirect::back()->withErrors(['auth_error' => 'You cannot rent your own costume! That would just be moving clothes around your own closet!']);
+        }
+
         if ($costume->stock < 1) {
-            return Redirect::back()->withErrors(['stock_error' => 'This costume is currently out of stock. Maybe pick something else?']);
+            return Redirect::back()->withErrors(['stock_error' => 'This costume is currently out of stock.']);
         }
 
         $existingActiveOrder = Order::where('user_id', Auth::id())
@@ -162,7 +165,7 @@ class OrderController extends Controller
     {
         // Load order and necessary relationships
         $order = Order::with(['costume.renter.store', 'user'])->findOrFail($order_id);
-        
+
         // Authorization Check: Must be Admin, or the Customer who placed it, or the Renter who owns the costume.
         if (Auth::user()->hasRole('admin') || Auth::id() === $order->user_id || Auth::id() === $order->costume->user_id) {
             return view('order.detail', compact('order'));
@@ -170,5 +173,39 @@ class OrderController extends Controller
 
         // SCREAM at unauthorized access
         abort(403, 'Unauthorized access to order details!');
+    }
+
+    /**
+     * Finds orders where end_date has passed but status is still active (borrowed/confirmed).
+     * Marks them as 'overdue' and restores stock for borrowed items.
+     * This logic should ideally run via a scheduler, but we run it on demand for now.
+     */
+    public static function checkAndExpireOverdueOrders(): void
+    {
+        $overdueOrders = Order::whereIn('status', ['confirmed', 'borrowed'])
+            ->where('end_date', '<', Carbon::today())
+            ->with('costume')
+            ->get();
+
+        foreach ($overdueOrders as $order) {
+            $overdueOrders = Order::whereIn('status', ['confirmed', 'borrowed'])
+                ->where('end_date', '<', Carbon::today())
+                ->with('costume')
+                ->get();
+
+            foreach ($overdueOrders as $order) {
+                // If the item was borrowed, we don't restore stock yet (to simplify the manual check logic)
+                // but we change the status to OVERDUE to alert the Renter/Admin.
+                if ($order->status === 'borrowed') {
+                    $order->status = 'overdue';
+                    $order->save();
+                } else {
+                    // If confirmed but not yet borrowed and the date passed (pickup expired)
+                    $order->status = 'rejected';
+                    $order->save();
+                    $order->costume->increment('stock'); // Stock restore for failed pickup
+                }
+            }
+        }
     }
 }

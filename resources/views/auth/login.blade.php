@@ -5,8 +5,40 @@
         <p class="text-sm text-gray-300">Log in to manage your cosmic journey with Starium Rental.</p>
     </div>
 
-    <div class="p-6 bg-gray-800 shadow-xl sm:rounded-lg">
+    <div class="p-6 bg-gray-800 shadow-xl sm:rounded-lg" x-data="{
+    debugAccounts: {
+        'Owner': 'owner@starium.test',
+        'Admin': 'admin@starium.test',
+        'User': 'user@starium.test',
+        'Captain Cosmic - Cosmic Thread': 'renter1@starium.test',
+        'Princess Aurora - Fairy Dust': 'renter2@starium.test',
+        'The Anime King - Weeb Central': 'renter3@starium.test',
+    },
+    selectedAccount: '',
+    fillLogin() {
+        if (this.selectedAccount) {
+            // Set the email input value
+            document.getElementById('email').value = this.debugAccounts[this.selectedAccount];
+            // Set the password input value (The hardcoded password is 'password')
+            document.getElementById('password').value = 'password';
+        }
+    }
+}">
         <x-auth-session-status class="mb-4" :status="session('status')" />
+
+        {{-- DEBUG DROPDOWN START --}}
+        <div class="mb-6 p-4 bg-gray-700 rounded-lg border border-red-500">
+            <label for="debug_user" class="block text-sm font-medium text-red-400 mb-2">🚨 DEBUG: Quick Fill
+                Accounts</label>
+            <select id="debug_user" x-model="selectedAccount" x-on:change="fillLogin()"
+                class="block w-full bg-gray-600 border-gray-500 text-white focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm">
+                <option value="">-- Select an Account to Auto-Fill --</option>
+                <template x-for="(email, name) in debugAccounts" :key="name">
+                    <option :value="name" x-text="`${name} (${email})`"></option>
+                </template>
+            </select>
+        </div>
+        {{-- DEBUG DROPDOWN END --}}
 
         <form method="POST" action="{{ route('login') }}" class="mt-4 space-y-6">
             @csrf
@@ -14,40 +46,16 @@
             <div>
                 <x-input-label for="email" :value="__('Email (Cosmic ID)')" class="text-indigo-400" />
                 <x-text-input id="email" class="block mt-1 w-full bg-gray-700 border-gray-600 text-white" type="email"
-                    name="email" :value="old('email')" required autofocus autocomplete="username" />
-                <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                    name="email" :value="old('email')" required autofocus autocomplete="off" /> <x-input-error
+                    :messages="$errors->get('email')" class="mt-2" />
             </div>
 
             <div>
                 <x-input-label for="password" :value="__('Password (Warp Key)')" class="text-indigo-400" />
                 <x-text-input id="password" class="block mt-1 w-full bg-gray-700 border-gray-600 text-white"
-                    type="password" name="password" required autocomplete="current-password" />
-                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                    type="password" name="password" required autocomplete="off" /> <x-input-error
+                    :messages="$errors->get('password')" class="mt-2" />
             </div>
-
-            {{-- <div>
-                <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
-
-                <div class="flex items-center space-x-3 mt-1">
-
-                    <div class="flex space-x-2 items-center shrink-0">
-                        <div id="captcha-img-container"
-                            class="w-36 h-10 bg-gray-700 border border-gray-600 rounded-md overflow-hidden flex items-center justify-center">
-                            **{!! captcha_img('flat') !!}** </div>
-
-                        <button type="button"
-                            onclick="document.getElementById('captcha-img-container').querySelector('img').src = '{{ route('captcha.custom', ['flat']) }}?' + Math.random();"
-                            class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition duration-150 shrink-0"> 
-                            Refresh
-                        </button>
-                    </div>
-
-                    <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
-                        name="captcha" required autocomplete="off" placeholder="Type the code above" />
-                </div>
-
-                <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
-            </div> --}}
 
             <div class="block">
                 <label for="remember_me" class="inline-flex items-center">
@@ -78,3 +86,29 @@
         </form>
     </div>
 </x-guest-layout>
+
+{{-- <div>
+    <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
+
+    <div class="flex items-center space-x-3 mt-1">
+
+        <div class="flex space-x-2 items-center shrink-0">
+            <div id="captcha-img-container"
+                class="w-36 h-10 bg-gray-700 border border-gray-600 rounded-md overflow-hidden flex items-center justify-center">
+                **{!! captcha_img('flat') !!}** </div>
+
+            <button type="button"
+                onclick="document.getElementById('captcha-img-container').querySelector('img').src = '{{ route('captcha.custom', ['flat']) }}?' + Math.random();"
+                class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition duration-150 shrink-0">
+                Refresh
+            </button>
+        </div>
+
+        <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
+            name="captcha" required autocomplete="off" placeholder="Type the code above" />
+    </div>
+
+    <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
+</div> --}}
+
+{{--taro diatas block--}}
