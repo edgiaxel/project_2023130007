@@ -45,12 +45,21 @@
 
                     @auth
                         {{-- 1. ADMIN & OWNER SHARED LINKS --}}
-                        @if ($isAdmin || $isOwner)
+                        @if ($isAdmin)
                             <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')"
                                 class="text-red-400 hover:text-white">
                                 {{ __('Admin Deck') }}
                             </x-nav-link>
+                        @endif
+                        
+                        @if ($isOwner)
+                            <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')"
+                                class="text-red-400 hover:text-white">
+                                {{ __('Owner Deck') }}
+                            </x-nav-link>
+                        @endif
 
+                        @if ($isAdmin || $isOwner)
                             <x-nav-link :href="route('admin.moderation.reviews')"
                                 :active="request()->routeIs('admin.moderation.reviews')"
                                 class="relative text-yellow-400 hover:text-white">

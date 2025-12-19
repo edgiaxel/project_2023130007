@@ -66,13 +66,13 @@
                 </label>
             </div>
 
+            {{-- CAPTCHA DROPDOWN START 
             <div>
                 <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
                 <div class="flex items-center space-x-3 mt-1" x-data="{ captchaSrc: '{{ captcha_src('flat') }}' }">
                     <div class="flex space-x-2 items-center shrink-0">
                         <div
                             class="w-40 h-auto bg-white rounded-md overflow-hidden flex items-center justify-center border-2 border-indigo-500">
-                            {{-- 💥 Use a dynamic :src so Alpine can force a reload --}}
                             <img :src="captchaSrc" alt="captcha" class="w-full h-full object-cover">
                         </div>
                         <button type="button" @click="captchaSrc = '{{ captcha_src('flat') }}' + Math.random()"
@@ -89,6 +89,7 @@
                 </div>
                 <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
             </div>
+             CAPTCHA DROPDOWN END --}}
 
             <div class="flex items-center justify-between mt-6">
                 @if (Route::has('password.request'))
