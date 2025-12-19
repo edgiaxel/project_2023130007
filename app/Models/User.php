@@ -54,4 +54,7 @@ class User extends Authenticatable
     {
         return $this->renter->store();
     }
+    public function favorites() {
+    return $this->belongsToMany(Costume::class, 'favorites')->withTimestamps();
+}
 }

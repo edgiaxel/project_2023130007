@@ -305,7 +305,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(BannerSeeder::class);
-
+        $this->call(SocialFeaturesSeeder::class);
         // NEW: Call Permission Seeder before other seeds to ensure roles exist
         $this->call(PermissionSeeder::class);
     }

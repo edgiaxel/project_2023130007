@@ -6,6 +6,7 @@ use App\Models\Costume;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\CatalogBanner;
+use App\Models\ReviewModerationRequest;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Http\Controllers\OrderController; // Ensure import is present
+use App\Models\Review; // 💥 ADD THIS LINE
 
 class AdminController extends Controller
 {// Fix all methods that use Auth::user()->hasRole or Auth::user()->hasPermissionTo
@@ -126,24 +128,6 @@ class AdminController extends Controller
         return view('admin.manage_costumes', compact('costumes'));
     }
 
-    public function setGlobalDiscount(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'rate' => 'required|numeric|min:0|max:100',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        GlobalDiscount::updateOrCreate(
-            ['id' => 1],
-            [
-                'rate' => $validated['rate'] / 100,
-                'is_active' => $request->has('is_active'),
-            ]
-        );
-
-        return redirect()->route('admin.discounts.manage')->with('status', 'Global flash sale updated.');
-    }
-
     /**
      * Handle Banner Image and Title updates.
      */
@@ -189,7 +173,10 @@ class AdminController extends Controller
     {
         $renter = User::role('renter')
             ->where('id', $userId)
-            ->with(['store', 'costumes' => fn($q) => $q->withCount('orders')])
+            ->with([
+                'store',
+                'costumes' => fn($q) => $q->withCount(['orders', 'favoritedBy']) // 💥 Added favoritedBy here!
+            ])
             ->firstOrFail();
 
         return view('admin.view_store_details', compact('renter'));
@@ -686,4 +673,64 @@ class AdminController extends Controller
 
         return Redirect::back()->withErrors(['order_error' => 'Cannot move banner further in that direction.']);
     }
+
+    /**
+     * Shows all pending review moderation requests from Renters.
+     */
+    public function manageReviewApprovals(): View
+    {
+        // 💥 FIXED: Removed the leading \App\Models\ because it's already imported at the top
+        $requests = ReviewModerationRequest::with(['review.user', 'review.costume', 'renter'])
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        return view('admin.moderation_requests', compact('requests'));
+    }
+
+    /**
+     * Approves a renter's request: Deletes the review and closes the request.
+     */
+    public function approveReviewDeletion(int $id): RedirectResponse
+    {
+        // 1. Find the review first (it might be the ID of the review itself)
+        $review = Review::find($id);
+
+        if (!$review) {
+            // If not found, check if $id was actually a Moderation Request ID
+            $request = ReviewModerationRequest::find($id);
+            if ($request) {
+                $review = Review::find($request->review_id);
+            }
+        }
+
+        // 2. Perform the execution
+        if ($review) {
+            $review->delete();
+
+            // 3. Close any associated moderation requests
+            ReviewModerationRequest::where('review_id', $review->id)
+                ->update(['status' => 'approved']);
+
+            return back()->with('status', 'The review has been wiped from the cosmic records. 💥');
+        }
+
+        return back()->withErrors(['error' => 'Review not found in this sector of the galaxy.']);
+    }
+
+    /**
+     * Rejects a renter's request: Keeps the review live.
+     */
+    public function rejectReviewDeletion(int $requestId): RedirectResponse
+    {
+        // 💥 FIXED: Simplified name
+        $request = ReviewModerationRequest::findOrFail($requestId);
+
+        // Mark request as rejected so it leaves the pending queue
+        $request->update(['status' => 'rejected']);
+
+        return back()->with('status', 'Renter request rejected. The user feedback remains public.');
+    }
+
+
 }

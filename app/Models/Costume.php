@@ -69,4 +69,30 @@ class Costume extends Model
     {
         return $this->is_discount_active && $this->discount_value > 0;
     }
+
+    public function favoritedBy()
+    {
+        return $this->belongsToMany(User::class, 'favorites')->withTimestamps();
+    }
+
+    public function getFavoritesCountAttribute()
+    {
+        return $this->favoritedBy()->count();
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function getAverageRatingAttribute()
+    {
+        // 💥 FIX: Round to 1 decimal place. Use 0 if no reviews exist.
+        return number_format($this->reviews()->avg('rating') ?: 0, 1);
+    }
+
+    public function getReviewCountAttribute()
+    {
+        return $this->reviews()->count();
+    }
 }

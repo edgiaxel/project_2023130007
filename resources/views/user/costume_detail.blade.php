@@ -158,6 +158,25 @@
                         @endif
                     </div>
 
+                    <div class="mt-6">
+                        <form action="{{ route('favorites.toggle', $costume->id) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center justify-center gap-2 border-2 py-3 rounded-lg font-bold transition duration-300 
+                            {{ Auth::user()->favorites->contains($costume->id)
+                        ? 'border-pink-500 text-pink-500 hover:bg-pink-500 hover:text-white'
+                        : 'border-gray-500 text-gray-400 hover:border-pink-400 hover:text-pink-400' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6"
+                                    fill="{{ Auth::user()->favorites->contains($costume->id) ? 'currentColor' : 'none' }}"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                                {{ Auth::user()->favorites->contains($costume->id) ? 'Remove from Wishlist' : 'Add to Wishlist' }}
+                            </button>
+                        </form>
+                    </div>
+
+
 
                     <div class="mt-6">
                         <p class="text-sm font-semibold border-b border-gray-600 pb-1 mb-2">Tags:</p>
@@ -166,6 +185,51 @@
                                 class="inline-block bg-indigo-800 text-indigo-100 px-3 py-1 text-xs font-semibold rounded-full mr-2 mb-2">{{ $tag }}</span>
                         @endforeach
                     </div>
+                </div>
+            </div>
+            
+            {{-- REVIEWS SECTION --}}
+            <div class="mt-12 bg-gray-800 p-8 border border-indigo-700 p-6 rounded-lg shadow-xl" x-data="{ 
+                        filter: 0, 
+                        sort: 'newest', 
+                        reviews: {{ json_encode($costume->reviews->load('user')) }},
+                        get filtered() {
+                            let f = this.filter == 0 ? this.reviews : this.reviews.filter(r => r.rating == this.filter);
+                            return f.sort((a,b) => this.sort === 'newest' ? new Date(b.created_at) - new Date(a.created_at) : b.rating - a.rating);
+                        }
+                    }">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                    <div>
+                        <h3 class="text-3xl font-bold text-white">Guest Experiences</h3>
+                        <p class="text-yellow-400 text-lg font-bold">Average: {{ $costume->average_rating }} /
+                            5.0 ⭐</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select x-model="filter" class="bg-gray-700 text-white text-xs rounded border-none">
+                            <option value="0">All Ratings</option>
+                            <option value="5">5 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="3">3 Stars</option>
+                            <option value="2">2 Stars</option>
+                            <option value="1">1 Star</option>
+                        </select>
+                        <select x-model="sort" class="bg-gray-700 text-white text-xs rounded border-none">
+                            <option value="newest">Newest First</option>
+                            <option value="highest">Best Rating</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <template x-for="r in filtered" :key="r.id">
+                        <div class="bg-gray-900 p-5 rounded-lg border-l-4 border-indigo-500 shadow-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="font-bold text-pink-400" x-text="r.user.name"></p>
+                                <p class="text-yellow-400" x-text="'★'.repeat(r.rating) + '☆'.repeat(5-r.rating)"></p>
+                            </div>
+                            <p class="text-gray-300 italic" x-text="r.comment"></p>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

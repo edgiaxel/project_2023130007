@@ -7,6 +7,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 
 class PasswordResetLinkController extends Controller
 {
@@ -25,20 +27,23 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => ['required', 'email'],
-        ]);
+        $request->validate(['email' => ['required', 'email', 'exists:users,email']]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
+        $otp = rand(100000, 999999);
+        $token = \Illuminate\Support\Str::random(60); // Keep token for Laravel's internal reset logic
+
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            ['token' => $token, 'otp' => $otp, 'created_at' => now()]
         );
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+        Mail::raw("Your Starium Reset Code is: {$otp}", function ($message) use ($request) {
+            $message->to($request->email)->subject('Warp Key Reset Code');
+        });
+
+        // 💥 CHANGE THIS: Instead of back(), go to the reset page
+        // We pass the email in the URL so the next page knows who is resetting
+        return redirect()->route('password.reset', ['token' => $token, 'email' => $request->email])
+            ->with('status', 'OTP sent! Please enter the code and your new password.');
     }
 }

@@ -12,6 +12,8 @@ use App\Http\Controllers\RenterStoreController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FavoriteController; // 💥 ADD THIS LINE
+use App\Http\Controllers\ReviewController; // 💥 ADD THIS LINE
 use Spatie\Permission\Models\Role;
 
 Route::get('/', [CatalogController::class, 'index'])->name('catalog');
@@ -101,6 +103,11 @@ Route::middleware('auth')->group(function () {
         // --- COSTUME TRASH MANAGEMENT ---
         Route::post('/costumes/{costume_id}/restore', [CostumeController::class, 'restore'])->name('costumes.restore'); // Requires a new method in CostumeController
         Route::delete('/costumes/{costume_id}/force-delete', [CostumeController::class, 'forceDelete'])->name('costumes.force_delete'); // Requires a new method in CostumeController
+
+        // REVIEW MODERATION (ADMIN)
+        Route::get('/moderation/reviews', [AdminController::class, 'manageReviewApprovals'])->name('moderation.reviews');
+        Route::post('/moderation/reviews/{id}/approve', [AdminController::class, 'approveReviewDeletion'])->name('moderation.approve');
+        Route::post('/moderation/reviews/{id}/reject', [AdminController::class, 'rejectReviewDeletion'])->name('moderation.reject');
     });
 
     // --- RENTER ROUTES (Protected by renter|admin|owner role) ---
@@ -152,6 +159,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/{format}', [ExportController::class, 'exportAnalytics'])
         ->whereIn('format', ['excel', 'pdf'])
         ->name('exports.analytics');
+
+    Route::get('/favorites', [FavoriteController::class, 'index'])->name('user.favorites');
+    Route::post('/favorites/toggle/{costume_id}', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
+
+    // Inside auth group
+    Route::get('/orders/{order_id}/review', [ReviewController::class, 'create'])->name('user.review.create');
+    Route::post('/orders/{order_id}/review', [ReviewController::class, 'store'])->name('user.review.store');
+    Route::post('/reviews/{review_id}/flag', [ReviewController::class, 'requestModeration'])->name('renter.review.flag');
 });
 
 require __DIR__ . '/auth.php';

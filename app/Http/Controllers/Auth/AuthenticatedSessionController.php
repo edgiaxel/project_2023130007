@@ -14,19 +14,21 @@ class AuthenticatedSessionController extends Controller
     public function create(): View
     {
         return view('auth.login');
-        
+
     }
 
     public function store(LoginRequest $request): RedirectResponse
-    {
-        $request->authenticate();
+{
+    $request->authenticate();
+    
+    // 💥 FIX: Laravel needs to know if it should set the long-term cookie
+    $request->session()->regenerate();
 
-        $request->session()->regenerate();
+    // The $request->authenticate() usually calls Auth::attempt() internally.
+    // If you are using standard Breeze, it uses the boolean $request->boolean('remember').
 
-        return redirect()->intended(route('dashboard', absolute: false));
-
-        
-    }
+    return redirect()->intended(route('dashboard', absolute: false));
+}
 
     public function destroy(Request $request): RedirectResponse
     {
@@ -46,5 +48,5 @@ class AuthenticatedSessionController extends Controller
             'captcha' => ['required', 'captcha'],
         ];
     }
-    
+
 }

@@ -127,7 +127,8 @@
         'id' => $s->costume_id,
         'name' => $s->costume->name ?? 'Deleted Costume',
         'rental_count' => (int) $s->rental_count,
-        'total_earnings' => (float) $s->total_earnings
+        'total_earnings' => (float) $s->total_earnings,
+        'favorites' => $s->costume->favoritedBy()->count()
     ];
 })) }},
 
@@ -197,6 +198,7 @@
                                                 Earnings <span x-show="sortColumn === 'total_earnings'"
                                                     x-text="sortDirection === 'asc' ? '▲' : '▼'"></span>
                                             </th>
+                                            <th class="px-3 py-2 text-center text-white uppercase">Wishlist</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-gray-700 divide-y divide-gray-600 text-gray-200">
@@ -208,6 +210,8 @@
                                                     x-text="sale.rental_count"></td>
                                                 <td class="px-3 py-4 whitespace-nowrap text-sm text-right text-green-400 font-mono"
                                                     x-text="formatRp(sale.total_earnings)"></td>
+                                                <td class="px-3 py-4 text-center text-pink-400 font-bold"
+                                                    x-text="sale.favorites"></td>
                                             </tr>
                                         </template>
 

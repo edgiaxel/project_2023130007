@@ -66,6 +66,30 @@
                 </label>
             </div>
 
+            <div>
+                <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
+                <div class="flex items-center space-x-3 mt-1" x-data="{ captchaSrc: '{{ captcha_src('flat') }}' }">
+                    <div class="flex space-x-2 items-center shrink-0">
+                        <div
+                            class="w-40 h-auto bg-white rounded-md overflow-hidden flex items-center justify-center border-2 border-indigo-500">
+                            {{-- 💥 Use a dynamic :src so Alpine can force a reload --}}
+                            <img :src="captchaSrc" alt="captcha" class="w-full h-full object-cover">
+                        </div>
+                        <button type="button" @click="captchaSrc = '{{ captcha_src('flat') }}' + Math.random()"
+                            class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition duration-150 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                    <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
+                        name="captcha" required autocomplete="off" placeholder="Type the code" />
+                </div>
+                <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
+            </div>
+
             <div class="flex items-center justify-between mt-6">
                 @if (Route::has('password.request'))
                     <a class="underline text-sm text-gray-400 hover:text-white" href="{{ route('password.request') }}">
@@ -87,28 +111,6 @@
     </div>
 </x-guest-layout>
 
-{{-- <div>
-    <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
 
-    <div class="flex items-center space-x-3 mt-1">
-
-        <div class="flex space-x-2 items-center shrink-0">
-            <div id="captcha-img-container"
-                class="w-36 h-10 bg-gray-700 border border-gray-600 rounded-md overflow-hidden flex items-center justify-center">
-                **{!! captcha_img('flat') !!}** </div>
-
-            <button type="button"
-                onclick="document.getElementById('captcha-img-container').querySelector('img').src = '{{ route('captcha.custom', ['flat']) }}?' + Math.random();"
-                class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition duration-150 shrink-0">
-                Refresh
-            </button>
-        </div>
-
-        <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
-            name="captcha" required autocomplete="off" placeholder="Type the code above" />
-    </div>
-
-    <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
-</div> --}}
 
 {{--taro diatas block--}}

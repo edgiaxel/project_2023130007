@@ -273,6 +273,75 @@
                     </div>
                 </div>
             </div>
+
+            <div class="mt-12 bg-gray-800 p-6 rounded-lg border-t-4 border-indigo-500">
+                <h3 class="text-xl font-bold text-white mb-4">Customer Feedback & Cosmic Ratings</h3>
+                <div class="space-y-4">
+                    @foreach($costume->reviews as $rev)
+                        <div class="p-4 bg-gray-700 rounded-md border border-gray-600 shadow-md">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-yellow-400 font-extrabold text-lg">{{ $rev->rating }} ⭐</span>
+                                    <p class="text-xs text-gray-400">by {{ $rev->user->name }} on
+                                        {{ $rev->created_at->format('d M Y') }}</p>
+                                </div>
+
+                                {{-- 🛡️ ADMIN / OWNER ACTION: DIRECT DELETE --}}
+                                @if(Auth::user()->hasAnyRole(['admin', 'owner']))
+                                    @php $adminDelUrl = route('admin.moderation.approve', ['id' => 'REPLACE_ID']); @endphp
+                                    <form action="{{ str_replace('REPLACE_ID', $rev->id, $adminDelUrl) }}" method="POST"
+                                        onsubmit="return confirm('ADMIN OVERRIDE: Permanently wipe this review from the galaxy?');">
+                                        @csrf
+                                        <button type="submit"
+                                            class="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1 px-2 rounded uppercase tracking-tighter">
+                                            Admin: Delete 💥
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+
+                            <p class="text-gray-200 mt-2 italic bg-gray-800 p-2 rounded">"{{ $rev->comment }}"</p>
+
+                            {{-- 🚩 RENTER ACTION: FLAG FOR REVIEW --}}
+                            @if(Auth::user()->hasRole('renter') && Auth::id() === $costume->user_id)
+                                <div x-data="{ open: false, reason: '' }" class="mt-3">
+                                    <button @click="open = !open" type="button"
+                                        class="text-xs text-red-400 hover:text-red-300 font-semibold flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                        </svg>
+                                        Report Review
+                                    </button>
+
+                                    <form x-show="open" x-transition action="{{ route('renter.review.flag', $rev->id) }}"
+                                        method="POST" class="mt-2 p-3 bg-gray-900 rounded border border-red-900/50">
+                                        @csrf
+                                        <label class="block text-[10px] text-gray-500 uppercase font-bold mb-1">Reason for
+                                            removal request:</label>
+                                        <textarea x-model="reason" name="reason"
+                                            placeholder="Explain why this review is misleading or spam..."
+                                            class="bg-gray-800 text-white text-xs rounded w-full border-gray-700 focus:border-red-500 min-h-[60px]"
+                                            required></textarea>
+                                        <div class="flex justify-end mt-2">
+                                            <button type="submit" :disabled="reason.trim().length < 5"
+                                                :class="reason.trim().length < 5 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'"
+                                                class="bg-red-700 text-white text-[10px] px-3 py-1 rounded font-bold transition">
+                                                Transmit Flag 🛰️
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+
+                    @if($costume->reviews->isEmpty())
+                        <p class="text-gray-500 italic text-sm">No feedback received for this costume yet.</p>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>

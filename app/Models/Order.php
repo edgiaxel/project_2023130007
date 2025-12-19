@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes; 
+    use HasFactory, SoftDeletes;
 
     protected $casts = [
-        'start_date' => 'date', 
-        'end_date' => 'date', 
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
     protected $fillable = [
         'order_code',
@@ -32,6 +32,10 @@ class Order extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class); 
+        return $this->belongsTo(User::class);
+    }
+    public function review()
+    {
+        return $this->hasOne(Review::class);
     }
 }
