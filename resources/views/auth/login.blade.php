@@ -66,7 +66,6 @@
                 </label>
             </div>
 
-            {{-- CAPTCHA DROPDOWN START 
             <div>
                 <x-input-label for="captcha" :value="__('Security Check')" class="text-indigo-400" />
                 <div class="flex items-center space-x-3 mt-1" x-data="{ captchaSrc: '{{ captcha_src('flat') }}' }">
@@ -85,11 +84,10 @@
                         </button>
                     </div>
                     <x-text-input id="captcha" class="block w-full bg-gray-700 border-gray-600 text-white" type="text"
-                        name="captcha" required autocomplete="off" placeholder="Type the code" />
+                        name="captcha" required autocomplete="on" placeholder="Type the code" />
                 </div>
                 <x-input-error :messages="$errors->get('captcha')" class="mt-2" />
             </div>
-             CAPTCHA DROPDOWN END --}}
 
             <div class="flex items-center justify-between mt-6">
                 @if (Route::has('password.request'))
